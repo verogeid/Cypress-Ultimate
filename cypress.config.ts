@@ -99,7 +99,7 @@ export default defineConfig({
 	env: {
 		orangeUsername,
 		orangePassword,
-		trelloToken,
-		trelloKey
+		TRELLO_TOKEN: process.env.TRELLO_TOKEN,
+		TRELLO_KEY: process.env.TRELLO_KEY
 	}
 });
