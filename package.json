@@ -1,6 +1,6 @@
 {
 	"name": "upex-cypress",
-	"version": "4",
+	"version": "4.0.0",
 	"description": "Cypress Automation",
 	"main": "index.js",
 	"homepage": "https://github.com/upex-galaxy/cypress-blackhole#readme",

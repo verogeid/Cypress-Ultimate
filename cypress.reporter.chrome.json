@@ -8,8 +8,8 @@
 	},
 	"reporterOptions": {
 		"reportDir": "cypress/tests_results/mocha/chrome",
-		"overwrite": false,
-		"html": false,
+		"overwrite": true,
+		"html": true,
 		"json": true
 	}
 }
