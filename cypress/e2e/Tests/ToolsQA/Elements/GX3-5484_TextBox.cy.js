@@ -1,4 +1,4 @@
-import dataForm from '@data/Elements/GX3-5484_TextBox-FillFormAndSubmit.json';
+import dataForm from '@data/Elements/GX3-5484_TextBox.json';
 
 const TXT_RESULT = 'p.mb-1';
 const CLASS_ERROR = '.mr-sm-2.field-error.form-control';
