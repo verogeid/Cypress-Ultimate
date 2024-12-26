@@ -1,0 +1,61 @@
+#! Este archivo es un tutorial básico para enseñar la sintaxis de YAML en GitHub Actions.
+#todo: Vamos a configurar un pipeline simple para ejecutar pruebas con Cypress.
+
+# Nombre del pipeline
+name: 🧪 Tutorial Básico de GitHub Actions para Cypress
+
+# Aquí se define CUANDO se ejecutará el Pipeline, puedes establecer muchas opciones...
+on: [workflow_dispatch]
+#? La opción "workflow_dispatch"  hace que puedas ejecutarlo manualmente desde el Repositorio Remoto en GitHub, en la pestaña "Actions", seleccionando el Pipeline y luego "Run workflow"
+
+# Definimos los trabajos (jobs) que se ejecutarán en este pipeline
+jobs:
+  # Nombre del trabajo (job)
+  TestSuite:
+    # Con runs-on definimos el sistema operativo donde se ejecutará este trabajo
+    runs-on: ubuntu-latest
+    #? environment: Se usa para definir un entorno de despliegue y puede incluir políticas de protección y secretos específicos del entorno.
+    #? env: Se usa para definir variables de entorno que estarán disponibles para todos los pasos dentro del job.
+
+    # Definimos los pasos (steps) que se ejecutarán en este trabajo
+    steps:
+    # Paso 1: Checkout del repositorio (casi siempre es el primer paso)
+    - name: 📘 Checkout del Repositorio
+      uses: actions/checkout@v4
+      # "uses" indica la acción que se va a utilizar, en este caso, checkout para clonar el repositorio
+
+    # Paso 2: Configurar Node.js
+    - name: 📦 Configurar Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: 20
+        # with se usa para especificar parámetros para la acción, en este caso, la versión de Node.js
+
+    # Paso 3: Instalar dependencias
+    - name: 💾 Instalar Dependencias
+      run: |
+        npm ci
+        npm list
+      # run se usa para ejecutar comandos de shell, en este caso, instalar dependencias y listarlas
+
+    # Paso 4: Ejecutar pruebas de Cypress en Chrome
+    - name: 🧪 Ejecutar Pruebas de Cypress en Chrome
+      uses: cypress-io/github-action@v4 # Esta es la acción oficial de Cypress para GitHub Actions
+      with:
+        browser: chrome
+        command: |
+          npm run test:run cypress/e2e/Tests/Elements
+        # Aquí especificamos el navegador y el comando para ejecutar las pruebas de Cypress
+
+    # Paso 5: Subir el reporte de pruebas a GitHub
+    - name: 📊 Subir Reporte de Pruebas
+      if: always() # el "if" es una condición para ejecutar el paso, en este caso, siempre
+      uses: actions/upload-artifact@v3
+      with:
+        name: mocha-report
+        path: mochawesome-report
+        # if: always() asegura que este paso se ejecute siempre, sin importar si los pasos anteriores fallaron
+        # uses indica la acción para subir artefactos, y with especifica el nombre y la ruta del reporte
+
+# Si quieres aprender más sobre GitHub Actions, visita la documentación oficial:
+# https://docs.github.com/en/actions
