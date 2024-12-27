@@ -48,7 +48,7 @@ Este repositorio contiene un marco de automatización de pruebas para el proyect
 ### > **Static Data:**
 
 - Directorio: `fixtures/data/<component-name>`
-- Nomenclatura: **camelCase**`.json`
+- Nomenclatura: **PascalCase**: `**.json`
 
 ### > **Images:**
 
