@@ -1,6 +1,4 @@
-export interface ApiResponse {
-	id: string;
-}
+import { type ApiResponse } from './types/GX3-5811_boardMembersTypes.api';
 
 export class BoardMembersPage {
 	public getUserId(_strHeader: string, _urlMember: string): Cypress.Chainable<string> {

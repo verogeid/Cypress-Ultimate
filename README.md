@@ -23,6 +23,37 @@
 
 Este repositorio contiene un marco de automatización de pruebas para el proyecto **Cypress**. El marco está diseñado para ejecutar pruebas de regresión, pruebas de humo y pruebas de integración en un entorno de CI/CD. El marco de automatización está construido con las mejores prácticas y patrones de diseño para garantizar la escalabilidad, mantenibilidad y reutilización del código de prueba.
 
+## Estructura de Archivos
+
+### > **Archivos de Prueba:**
+
+- Directorio:`e2e/tests/<app>/<component-name>`
+- Nomenclatura de Sufijos de Pruebas:  
+    - para pruebas generales: `**.cy.{js,ts}`
+    - para pruebas de E2E: `**.e2e.cy.{js,ts}`
+    - para pruebas API: `**.api.cy.{js,ts}`
+
+### > **Page Object Model (POM) and API Modules:**
+
+- Directorio: `support/pages`
+- Carpeta de Interfaces: `support/pages/types`
+- Nomenclatura POM: **PascalCase**: `**Page.{js,ts}`
+- Nomenclatura API: **PascalCase**: `**Page.api.{js,ts}`
+
+### > **Helper Modules:**
+
+- Directorio: `support/helper`
+- Carpeta de Interfaces: `support/helper/types`
+
+### > **Static Data:**
+
+- Directorio: `fixtures/data/<component-name>`
+- Nomenclatura: **camelCase**`.json`
+
+### > **Images:**
+
+- Directorio: `fixtures/images`
+
 ## Requisitos para Usar el Repositorio
 
 Antes de comenzar a trabajar con el repositorio, asegúrate de cumplir con los siguientes requisitos de software. Estos son esenciales para garantizar un entorno de trabajo fluido y compatible con los estándares de UPEX.
