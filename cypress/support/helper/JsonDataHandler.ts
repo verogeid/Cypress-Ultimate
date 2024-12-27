@@ -1,4 +1,4 @@
-class JsonDataHandler {
+export class JsonDataHandler {
 	private data: Record<string, any>;
 	private allowedKeys: string[] | null;
 
@@ -37,5 +37,3 @@ class JsonDataHandler {
 		}
 	}
 }
-
-export const objJsonDataHandler = new JsonDataHandler();

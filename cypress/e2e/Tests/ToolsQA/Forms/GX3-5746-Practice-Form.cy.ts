@@ -2,7 +2,7 @@ import { faker } from '@faker-js/faker';
 // faker usage guide: https://fakerjs.dev/guide/usage
 // faker modules: https://fakerjs.dev/api/
 
-import { objJsonDataHandler } from '@helper/JsonDataHandler';
+import { JsonDataHandler } from '@helper/JsonDataHandler';
 import { objPracticeFormPage } from '@pages/GX3-5746-Practice-Form.Page';
 
 const DATA_FIRST_NAME = faker.person.firstName();
@@ -18,6 +18,8 @@ const DATA_PICTURE_PATH = 'cypress/fixtures/images/upexgalaxy.gif';
 const DATA_CURRENT_ADDRESS = faker.location.direction();
 
 describe('GX3-5746 |ToolsQA | Forms | Practice Form', () => {
+	const objJsonDataHandler = new JsonDataHandler();
+
 	beforeEach('PRC: Usuario debe estar en la url Practice Form de ToolsQA', () => {
 		cy.visit('https://demoqa.com/automation-practice-form');
 		cy.url().should('contain', 'practice-form');
