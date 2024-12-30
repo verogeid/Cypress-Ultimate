@@ -43,7 +43,7 @@ on:
         - UAT #? donde los beta testers realizan acceptance testing.
         - PROD #? donde los usuarios finales usan la App.
       test_run:
-        description: "🚀 Enter the Test Suite to Run. The project and TX key will be extracted from the filename if it follows the format GX[1-4]-[0-9][_|-]**.cy.[js|ts]. You can use your own in the following fields."
+        description: "🚀 Enter the Test Suite to Run. The TX key will be extracted from the filename if it follows the format GX[1-4]-[0-9][_|-]**.cy.[js|ts]. You can use your own in the following field."
         required: true
         default: '<ingresa aquí el path Posix de tu test>'
         type: string
@@ -52,8 +52,9 @@ on:
         required: false
         type: string
       xray_project:
-        description: "🚀 Select the Project Key (Def: GX3)"
-        required: false
+        description: "🚀 Select the Project Key"
+        required: true
+        default: GX3
         type: choice
         options:
         - GX1
@@ -93,11 +94,11 @@ jobs:
       run: | #? Corre el linter de TypeScript para verificar errores de sintaxis.
         bun run check:ts
 
-    - name: Extract Xray TX and Project from Selected File
+    - name: Extract Xray TX from Selected File
       id: extract-xray-data
       run: |
         
-        # Extraer el nombre del proyecto y el ID de ejecución
+        # Extraer el ID de ejecución
 
         # Verifica si el nombre del archivo (sin la ruta) coincide con el patrón esperado.
         # El patrón busca un nombre de archivo en el formato 'GX[1-4]-[número][guion bajo o guion][cualquier cosa].cy.ts o .cy.js'.
@@ -108,18 +109,15 @@ jobs:
         # \.(cy\.ts|cy\.js)$ : Termina con '.cy.ts' o '.cy.js'.
 
         if [[ "$(basename "${{ github.event.inputs.test_run }}")" =~ ^(GX[1-4])-([0-9]+)(_|-)(.+)\.(cy\.ts|cy\.js)$ ]]; then
-          project_key="${BASH_REMATCH[1]}"
           xray_tx="${BASH_REMATCH[1]}-${BASH_REMATCH[2]}"
-          echo "Extracted Project Key: $project_key"
           echo "Extracted Xray TX: $xray_tx"
         fi
 
-    - name: Assign Xray TX and Project Key
+    - name: Assign Xray TX
       id: assign-xray-data
       run: |
         # Definición de constantes para valores por defecto
         default_xray_tx='GX3-1526'
-        default_xray_project='GX3'
 
         # Asignar valores a las variables según lógica
         if [ -n "${{ github.event.inputs.xray_tx }}" ]; then
@@ -130,16 +128,7 @@ jobs:
           testexec_key="$default_xray_tx"
         fi
 
-        if [ -n "${{ github.event.inputs.xray_project }}" ]; then
-          project_key="${{ github.event.inputs.xray_project }}"
-        elif [ -n "$project_key" ]; then
-          project_key="$project_key"
-        else
-          project_key="$default_xray_project"
-        fi
-
         echo "Final Test Execution Key: $testexec_key"
-        echo "Final Project Key: $project_key"
 
     - name: Check for Tests
       id: check-tests
@@ -203,7 +192,7 @@ jobs:
         testFormat: 'junit' #! NO CAMBIAR
         testPaths: 'cypress/tests_results/junit/chrome_junit_report.xml' #! NO CAMBIAR
         testExecKey: $testexec_key
-        projectKey: $project_key
+        projectKey: ${{ github.event.inputs.xray_project }}
         testEnvironments: ${{ github.event.inputs.environment }}
 
     - name: 📊 Upload Artifact Mochawesome Report
