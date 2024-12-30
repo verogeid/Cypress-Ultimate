@@ -109,6 +109,7 @@ describe('GX3-5811 | Trello (API) | Members | API Endpoint: Get the Members of a
 	});
 
 	it('GX3-5812 | TC01: Validar obtener miembros del tablero exitosamente.', () => {
+		// Arrange
 		const URL_MEMBERS_BOARD = authTrello.buildUrl(fixtureData.url.get.membersBoard, {
 			protocol: fixtureData.url.protocol,
 			host: fixtureData.url.host,
@@ -127,6 +128,7 @@ describe('GX3-5811 | Trello (API) | Members | API Endpoint: Get the Members of a
 			}
 		};
 
+		// Act
 		authTrello.authenticate(requestData).then((authHeader: string) => {
 			cy.api({
 				method: 'GET',
@@ -136,12 +138,14 @@ describe('GX3-5811 | Trello (API) | Members | API Endpoint: Get the Members of a
 				},
 				failOnStatusCode: false
 			}).then(response => {
+				// Assert
 				expect(response.status).to.eq(200);
 			});
 		});
 	});
 
 	it('GX3-5812 | TC02: Validar No obtener miembros del tablero cuando el IDBOARD es inexistente.', () => {
+		// Arrange
 		const ID_BOARD = 'nonexistent';
 
 		const URL_MEMBERS_BOARD = authTrello.buildUrl(fixtureData.url.get.membersBoard, {
@@ -162,6 +166,7 @@ describe('GX3-5811 | Trello (API) | Members | API Endpoint: Get the Members of a
 			}
 		};
 
+		// Act
 		authTrello.authenticate(requestData).then((authHeader: string) => {
 			cy.api({
 				method: 'GET',
@@ -171,12 +176,14 @@ describe('GX3-5811 | Trello (API) | Members | API Endpoint: Get the Members of a
 				},
 				failOnStatusCode: false
 			}).then(response => {
+				// Assert
 				expect(response.status).to.eq(400);
 			});
 		});
 	});
 
 	it('GX3-5812 | TC03: Validar No obtener miembros del tablero cuando el IDBOARD es null.', () => {
+		// Arrange
 		const ID_BOARD = null;
 
 		const URL_MEMBERS_BOARD = authTrello.buildUrl(fixtureData.url.get.membersBoard, {
@@ -197,6 +204,7 @@ describe('GX3-5811 | Trello (API) | Members | API Endpoint: Get the Members of a
 			}
 		};
 
+		// Act
 		authTrello.authenticate(requestData).then((authHeader: string) => {
 			cy.api({
 				method: 'GET',
@@ -206,12 +214,14 @@ describe('GX3-5811 | Trello (API) | Members | API Endpoint: Get the Members of a
 				},
 				failOnStatusCode: false
 			}).then(response => {
+				// Assert
 				expect(response.status).to.eq(400);
 			});
 		});
 	});
 
 	it('GX3-5812 | TC04: Validar obtener detalles de un miembro del tablero exitosamente.', () => {
+		// Arrange
 		const URL_MEMBERS_BOARD = authTrello.buildUrl(fixtureData.url.get.membersBoard, {
 			protocol: fixtureData.url.protocol,
 			host: fixtureData.url.host,
@@ -254,6 +264,7 @@ describe('GX3-5811 | Trello (API) | Members | API Endpoint: Get the Members of a
 						myToken: fixtureData.auth.token
 					});
 
+					// Act
 					cy.api({
 						method: 'GET',
 						url: URL_MEMBER_DATA,
@@ -262,6 +273,7 @@ describe('GX3-5811 | Trello (API) | Members | API Endpoint: Get the Members of a
 						},
 						failOnStatusCode: false
 					}).then(response => {
+						// Assert
 						expect(response.status).to.eq(200);
 					});
 				}
@@ -270,6 +282,7 @@ describe('GX3-5811 | Trello (API) | Members | API Endpoint: Get the Members of a
 	});
 
 	it('GX3-5812 | TC05: Validar No obtener detalles de un miembro del tablero cuando el IDMEMBER es inexistente.', () => {
+		// Arrange
 		const URL_MEMBER_DATA = authTrello.buildUrl(fixtureData.url.get.memberData, {
 			protocol: fixtureData.url.protocol,
 			host: fixtureData.url.host,
@@ -288,6 +301,7 @@ describe('GX3-5811 | Trello (API) | Members | API Endpoint: Get the Members of a
 			}
 		};
 
+		// Act
 		authTrello.authenticate(requestData).then((authHeader: string) => {
 			cy.api({
 				method: 'GET',

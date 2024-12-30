@@ -3,7 +3,7 @@
 #*🚀 Solo necesitas configurar las variables de entorno, keys de Jira y tu ruta de archivo de prueba a ejecutar en el Panel "Run workflow" de GitHub Actions
 #? 🧪 Este PIPELINE ejecutará tus pruebas y subirá los resultados a Jira XRay
 
-name: 🧪 UPEX CI/CD SanityTest Pipeline
+name: 🧪 CI/CD SanityTest Pipeline
 run-name: ${{github.actor}}👨🏻‍🔬 triggered SanityTest in ${{github.ref_name}}
 
 on:
@@ -19,6 +19,16 @@ on:
         - ubuntu-22.04
         - macos-latest
         - windows-latest
+      browser:
+        description: Select the Browser
+        required: true
+        default: 'chrome'
+        type: choice
+        options:
+        - chrome
+        - firefox
+        - edge
+        - safari
       environment:
         description: 🚀Select the Test Environment
         required: true
@@ -33,19 +43,17 @@ on:
         - UAT #? donde los beta testers realizan acceptance testing.
         - PROD #? donde los usuarios finales usan la App.
       test_run:
-        description: 🚀Select the Test Suite to Run
+        description: "🚀 Enter the Test Suite to Run. The project and TX key will be extracted from the filename if it follows the format GX[1-4]-[0-9][_|-]**.cy.[js|ts]. You can use your own in the following fields."
         required: true
-        default: '<ingresa aquí el path Posix de tu test>' #! No modificar, esto es solo un ejemplo.
+        default: '<ingresa aquí el path Posix de tu test>'
         type: string
       xray_tx:
-        description: 🚀Enter the Test Execution ID
-        required: true
-        default: 'GX3-1526' #! No modificar, esto es solo un ejemplo.
+        description: "🚀 Enter the Test Execution ID (Def: GX3-1526)"
+        required: false
         type: string
       xray_project:
-        description: 🚀Select the Project Key
-        required: true
-        default: 'GX3' #! No modificar, esto es solo un ejemplo.
+        description: "🚀 Select the Project Key (Def: GX3)"
+        required: false
         type: choice
         options:
         - GX1
@@ -61,8 +69,8 @@ jobs:
       name: ${{ github.event.inputs.environment }}
     env:
       MOCHA_REPORT_DIR: cypress/tests_reports/chrome_mocha_report
-      USERNAME: ${{ secrets.USERNAME }}
-      PASSWORD: ${{ secrets.PASSWORD }}
+      TRELLO_TOKEN: ${{ secrets.TRELLO_TOKEN }}
+      TRELLO_KEY: ${{ secrets.TRELLO_KEY }}
 
     steps:
     - name: 💻 Checkout Repo
@@ -85,32 +93,121 @@ jobs:
       run: | #? Corre el linter de TypeScript para verificar errores de sintaxis.
         bun run check:ts
 
+    - name: Extract Xray TX and Project from Selected File
+      id: extract-xray-data
+      run: |
+        
+        # Extraer el nombre del proyecto y el ID de ejecución
+
+        # Verifica si el nombre del archivo (sin la ruta) coincide con el patrón esperado.
+        # El patrón busca un nombre de archivo en el formato 'GX[1-4]-[número][guion bajo o guion][cualquier cosa].cy.ts o .cy.js'.
+        # ^(GX[1-4])       : Comienza con "GX" seguido de un número del 1 al 4.
+        # -([0-9]+)       : Un guion seguido de uno o más dígitos numéricos.
+        # (_|-)            : Un guion bajo o un guion después del número.
+        # (.+)            : Cualquier secuencia de caracteres.
+        # \.(cy\.ts|cy\.js)$ : Termina con '.cy.ts' o '.cy.js'.
+
+        if [[ "$(basename "${{ github.event.inputs.test_run }}")" =~ ^(GX[1-4])-([0-9]+)(_|-)(.+)\.(cy\.ts|cy\.js)$ ]]; then
+          project_key="${BASH_REMATCH[1]}"
+          xray_tx="${BASH_REMATCH[1]}-${BASH_REMATCH[2]}"
+          echo "Extracted Project Key: $project_key"
+          echo "Extracted Xray TX: $xray_tx"
+        fi
+
+    - name: Assign Xray TX and Project Key
+      id: assign-xray-data
+      run: |
+        # Definición de constantes para valores por defecto
+        default_xray_tx='GX3-1526'
+        default_xray_project='GX3'
+
+        # Asignar valores a las variables según lógica
+        if [ -n "${{ github.event.inputs.xray_tx }}" ]; then
+          testexec_key="${{ github.event.inputs.xray_tx }}"
+        elif [ -n "$xray_tx" ]; then
+          testexec_key="$xray_tx"
+        else
+          testexec_key="$default_xray_tx"
+        fi
+
+        if [ -n "${{ github.event.inputs.xray_project }}" ]; then
+          project_key="${{ github.event.inputs.xray_project }}"
+        elif [ -n "$project_key" ]; then
+          project_key="$project_key"
+        else
+          project_key="$default_xray_project"
+        fi
+
+        echo "Final Test Execution Key: $testexec_key"
+        echo "Final Project Key: $project_key"
+
+    - name: Check for Tests
+      id: check-tests
+      run: |
+        
+        if [ ! -f "${{ github.event.inputs.test_run }}" ]; then
+          echo "The specified file does not exist."
+          echo "no_tests=true" >> $GITHUB_OUTPUT
+        else
+          # Busca si el archivo contiene 'expect' o bloques 'it'
+
+          # grep -q "expect" "${{ github.event.inputs.test_run }}": 
+          # `grep`: comando utilizado para buscar texto dentro de archivos.
+          # `-q`: opción que silencia la salida de `grep`; solo devuelve un código de salida.
+          # `"it("`: patrón de búsqueda.
+          # `${{ github.event.inputs.test_run }}`: ruta del archivo de prueba.
+
+          if grep -q "expect" "${{ github.event.inputs.test_run }}" || grep -q "it(" "${{ github.event.inputs.test_run }}"; then 
+            echo "Tests found."
+            echo "no_tests=false" >> $GITHUB_OUTPUT 
+          else 
+            echo "No tests found in the file." 
+            echo "no_tests=true" >> $GITHUB_OUTPUT 
+          fi
+        fi
+
     - name: 🧪 Cypress Run Sanity Test
+      if: steps.check-tests.outputs.no_tests == 'false'
       uses: cypress-io/github-action@v4
       with:
-        browser: chrome
-        command: |
-          bun run test:sanity:ci ${{ github.event.inputs.test_run }}
+        browser: ${{ github.event.inputs.browser }}
+        command: bun run test:sanity:ci "${{ github.event.inputs.test_run }}"
 
     - name: 📬 Generate JUnit/Mocha Report
-      if: always()
+      if: always() && steps.check-tests.outputs.no_tests == 'false'
       run: bun run chrome:report
 
-    #    - name: ✅ Import Test Results to Xray
-    #      if: always() #? Corre este paso si la variable de #entorno está definida
-    #      uses: mikepenz/xray-action@v3
-    #      with:
-    #        #OPCIONES PARA IMPORTAR LOS RESULTADOS DE PRUEBA A #JIRA XRAY:
-    #        username: ${{ secrets.XRAY_CLIENT_ID}}
-    #        password: ${{ secrets.XRAY_CLIENT_SECRET}}
-    #        testFormat: 'junit' #! NO CAMBIAR
-    #        testPaths: 'cypress/tests_results/junit/chrome_junit_report.xml' #! NO CAMBIAR
-    #        testExecKey: ${{ github.event.inputs.xray_tx }} #! NO CAMBIAR
-    #        projectKey: ${{ github.event.inputs.xray_project }} #! NO CAMBIAR
-    #        testEnvironments: ${{ github.event.inputs.environment }}
+    - name: Set XRAY Secrets as Environment Variables
+      run: |
+        echo "XRAY_CLIENT_ID=${{ secrets.XRAY_CLIENT_ID }}" >> $GITHUB_ENV
+        echo "XRAY_CLIENT_SECRET=${{ secrets.XRAY_CLIENT_SECRET }}" >> $GITHUB_ENV
+
+    - name: Check for XRAY Necessary Secrets
+      id: check-xray-secrets
+      run: |
+        
+        # `-z`: operador que verifica si la longitud de la cadena es cero
+        if [[ -z "$XRAY_CLIENT_ID" || -z "$XRAY_CLIENT_SECRET" ]]; then
+          echo "xray_secrets_exist=false" >> $GITHUB_OUTPUT
+        else
+          echo "xray_secrets_exist=true" >> $GITHUB_OUTPUT
+        fi
+
+    - name: ✅ Import Test Results to Xray
+      if: always() && steps.check-tests.outputs.no_tests == 'false' && steps.check-xray-secrets.outputs.xray_secrets_exist == 'true'
+      uses: mikepenz/xray-action@v3
+      with:
+        #OPCIONES PARA IMPORTAR LOS RESULTADOS DE PRUEBA A #JIRA XRAY:
+        username: ${{ secrets.XRAY_CLIENT_ID}}
+        password: ${{ secrets.XRAY_CLIENT_SECRET}}
+        testFormat: 'junit' #! NO CAMBIAR
+        testPaths: 'cypress/tests_results/junit/chrome_junit_report.xml' #! NO CAMBIAR
+        testExecKey: $testexec_key
+        projectKey: $project_key
+        testEnvironments: ${{ github.event.inputs.environment }}
 
     - name: 📊 Upload Artifact Mochawesome Report
-      if: always()
+      if: always() && steps.check-tests.outputs.no_tests == 'false'
       uses: actions/upload-artifact@v4
       with:
         name: sanity-mocha-report
@@ -119,26 +216,58 @@ jobs:
 
     #* ------- Mochawesome Report Build and Deploy -------
     - name: 🚀 Deploy Mocha Report to GitHub Pages
-      if: always()
+      if: always() && steps.check-tests.outputs.no_tests == 'false'
       uses: peaceiris/actions-gh-pages@v4
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
         publish_branch: gh-pages #? the branch used for the GitHub Pages content.
-        destination_dir: sanity/${{ github.event.inputs.xray_tx }} #? this is the directory inside the gh-pages branch where the MOCHA_REPORT_DIR will be saved.
+        destination_dir: sanity/${{ steps.extract-xray-data.outputs.xray_tx }} #? this is the directory inside the gh-pages branch where the MOCHA_REPORT_DIR will be saved.
         publish_dir: ${{ env.MOCHA_REPORT_DIR }} #? the directory to be published.
         keep_files: true #? true is required to work properly with the subfolder option in the Build Allure Report step.
         #* -----------------------------------------
 
-        #  Ari-Slack-Notification:
-        #    needs: [ SanityTest ] #? will always run after the SanityTest job
-        #    if: always()
-        #    runs-on: ubuntu-latest
-        #    steps:
-        #    - name: 🔔 Slack Notification
-        #      uses: rtCamp/action-slack-notify@v2
-        #      env:
-        #        SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
-        #        SLACK_USERNAME: Ari✨
-        #        SLACK_MESSAGE: '🧪(${{ github.repository }}): ${{ github.actor }} triggered SanityTest🚀'
-        #        SLACK_COLOR: ${{ needs.SanityTest.result }}
-        #        SLACK_ICON: ${{ secrets.ARI_PROFILE }}
+    - name: Debug Check Tests Output
+      run: |
+        echo "Check Tests Output: ${{ steps.check-tests.outputs.no_tests }}"
+
+  Ari-Slack-Notification:
+    needs: [ SanityTest ] #? will always run after the SanityTest job
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+    - name: Set Slack Webhook as Environment Variable
+      run: echo "SLACK_WEBHOOK=${{ secrets.SLACK_WEBHOOK }}" >> $GITHUB_ENV
+
+    - name: Check for Slack Necessary Secrets
+      id: check-slack-secrets
+      run: |
+        if [[ -z "$SLACK_WEBHOOK" ]]; then
+          echo "slack_secrets_exist=false" >> $GITHUB_OUTPUT
+        else
+          echo "slack_secrets_exist=true" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Prepare Slack Message
+      id: prepare-message
+      run: |
+        SLACK_MESSAGE="🧪(${GITHUB_REPOSITORY}): ${GITHUB_ACTOR} triggered SanityTest 🚀 \nResult: *$(echo '${{ needs.SanityTest.result }}' | tr '[:lower:]' '[:upper:]')*"
+        echo "SLACK_MESSAGE=$SLACK_MESSAGE" >> $GITHUB_ENV
+
+    - name: 🔔 Slack Notification
+      if: steps.check-slack-secrets.outputs.slack_secrets_exist == 'true' && steps.check-tests.outputs.no_tests == 'false'
+      uses: rtCamp/action-slack-notify@v2
+      env:
+        SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+        SLACK_USERNAME: Ari✨
+        SLACK_MESSAGE: ${{ env.SLACK_MESSAGE }}
+        SLACK_COLOR: ${{ needs.SanityTest.result }}
+        SLACK_ICON: ${{ secrets.ARI_PROFILE }}
+
+    - name: Create Manual Slack Message
+      run: |
+        echo "🧪(${{ github.repository }}): ${{ github.actor }} triggered SanityTest🚀"
+        if [ "${{ steps.check-tests.outputs.no_tests }}" == "true" ]; then
+          echo "Result: *NO TEST FOUND*"
+        else
+          echo "Result: *$(echo "${{ needs.SanityTest.result }}" | tr '[:lower:]' '[:upper:]')*"
+        fi
