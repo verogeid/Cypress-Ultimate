@@ -160,7 +160,7 @@ jobs:
       uses: cypress-io/github-action@v4
       with:
         browser: ${{ github.event.inputs.browser }}
-        command: bun run test:sanity:ci "${{ github.event.inputs.test_run }}"
+        command: bun run test:sanity:ci ${{ github.event.inputs.test_run }}
 
     - name: 📬 Generate JUnit/Mocha Report
       if: always() && steps.check-tests.outputs.no_tests == 'false'
