@@ -156,6 +156,9 @@ jobs:
           fi
         fi
 
+        echo "Current directory contents:" 
+        ls cypress/e2e/Tests/API/Cards/
+
     - name: 🧪 Cypress Run Sanity Test
       id: cypress-run
       if: steps.check-tests.outputs.no_tests == 'false'
