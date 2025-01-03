@@ -139,7 +139,7 @@ jobs:
         if [ ! -f "${{ github.event.inputs.test_run }}" ]; then
           echo "${{ github.event.inputs.test_run }}"
           echo "The specified file does not exist."
-          echo "no_tests=true" >> $GIT${{ github.event.inputs.test_run }}"B_OUTPUT
+          echo "no_tests=true" >> $GITHUB_OUTPUT 
         else
           # Busca si el archivo contiene 'expect' o bloques 'it'
           # `grep`: comando utilizado para buscar texto dentro de archivos.
