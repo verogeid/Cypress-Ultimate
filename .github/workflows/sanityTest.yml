@@ -156,6 +156,8 @@ jobs:
           fi
         fi
 
+        pwd
+        ls -la
         echo "Current directory contents:" 
         ls cypress/e2e/Tests/API/Cards/
 
