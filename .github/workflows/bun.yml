@@ -1,54 +1,58 @@
 Cómo Usar Bun en Workflows de Desarrollo
 Introducción a Bun
 
-Bun es un runtime de JavaScript que está ganando popularidad por su velocidad y eficiencia. Además de ser un entorno de ejecución, incluye un gestor de paquetes y un bundler, lo que lo convierte en una herramienta integral para desarrolladores.
+Bun es un runtime de JavaScript que ha ganado popularidad por su velocidad y eficiencia. Además de ser un entorno de ejecución, incluye un gestor de paquetes y un bundler, lo que lo convierte en una herramienta integral para desarrolladores.
 ¿Por Qué Usar Bun en tus Workflows?
 
     Rendimiento: Bun es conocido por su rapidez en la ejecución y compilación de código, lo que permite un desarrollo más ágil.
-    Simplicidad: Integra múltiples funciones en una sola herramienta, como la gestión de paquetes y el bundling, simplificando la configuración y el mantenimiento de proyectos.
-    Soporte para TypeScript: Ofrece soporte nativo para TypeScript, lo que facilita el desarrollo de aplicaciones modernas y tipadas.
-    Ecosistema Moderno: Proporciona un entorno moderno y eficiente para trabajar con JavaScript, lo que lo hace ideal para proyectos que requieren un rendimiento óptimo.
-    Comunidad Creciente: Aunque es relativamente nuevo, Bun está ganando tracción, y su comunidad activa está contribuyendo constantemente a su mejora.
+    Simplicidad: Integra múltiples funciones en una sola herramienta, simplificando la configuración y el mantenimiento de proyectos.
+    Soporte para TypeScript: Ofrece soporte nativo para TypeScript, facilitando el desarrollo de aplicaciones modernas y tipadas.
+    Ecosistema Moderno: Proporciona un entorno eficiente para trabajar con JavaScript, ideal para proyectos que requieren un rendimiento óptimo.
+    Comunidad Creciente: Aunque es relativamente nuevo, Bun está ganando tracción y su comunidad activa contribuye constantemente a su mejora.
 
 Parámetros Típicos para Ejecutar Pruebas
 
-Cuando se trata de ejecutar pruebas en un entorno de desarrollo, hay varios tipos de pruebas que puedes llevar a cabo, cada una con su propio conjunto de parámetros. Aquí te presento los tipos más comunes y sus características:
+Al ejecutar pruebas en un entorno de desarrollo, cada tipo tiene su propio conjunto de parámetros. Aquí te presento los más comunes:
+Pruebas de Smoke
 
-    Pruebas de Smoke
-        Descripción: Verifican las funcionalidades básicas del software para asegurarse de que las funciones críticas estén operativas después de una nueva implementación.
-        Parámetros Típicos:
-            --test-type smoke
-            --browser chrome (o el navegador que estés utilizando)
-            --env QA (o el entorno específico)
+    Descripción: Verifican funcionalidades básicas para asegurar que las funciones críticas estén operativas después de una nueva implementación.
+    Parámetros:
+        --test-type smoke
+        --browser chrome
+        --env QA
 
-    Pruebas de Sanity
-        Descripción: Se centran en verificar que una funcionalidad específica funcione correctamente después de un cambio en el código.
-        Parámetros Típicos:
-            --test-type sanity
-            --feature <nombre-de-la-funcionalidad>
-            --env DEV (o el entorno específico)
+Pruebas de Sanity
 
-    Pruebas de Regresión
-        Descripción: Aseguran que las nuevas modificaciones no hayan afectado las funcionalidades existentes del software.
-        Parámetros Típicos:
-            --test-type regression
-            --browser firefox (o el navegador que estés utilizando)
-            --env STAGING (o el entorno específico)
+    Descripción: Se centran en verificar que una funcionalidad específica funcione correctamente tras un cambio en el código.
+    Parámetros:
+        --test-type sanity
+        --feature <nombre-de-la-funcionalidad>
+        --env DEV
 
-    Pruebas de Aceptación
-        Descripción: Validan que el software cumpla con los requisitos de negocio y que sea aceptable para el usuario final.
-        Parámetros Típicos:
-            --test-type acceptance
-            --user <usuario-de-prueba>
-            --env UAT (entorno de aceptación)
+Pruebas de Regresión
 
-    Pruebas de Carga
-        Descripción: Evalúan cómo se comporta el sistema bajo carga, es decir, cuándo se somete a un número significativo de usuarios o transacciones.
-        Parámetros Típicos:
-            --test-type load
-            --virtual-users <número>
-            --duration <tiempo-en-segundos>
+    Descripción: Aseguran que las nuevas modificaciones no afecten las funcionalidades existentes.
+    Parámetros:
+        --test-type regression
+        --browser firefox
+        --env STAGING
+
+Pruebas de Aceptación
+
+    Descripción: Validan que el software cumpla con los requisitos de negocio y sea aceptable para el usuario final.
+    Parámetros:
+        --test-type acceptance
+        --user <usuario-de-prueba>
+        --env UAT
+
+Pruebas de Carga
+
+    Descripción: Evalúan el comportamiento del sistema bajo carga significativa de usuarios o transacciones.
+    Parámetros:
+        --test-type load
+        --virtual-users <número>
+        --duration <tiempo-en-segundos>
 
 Conclusión
 
-Al utilizar Bun en tus workflows de desarrollo, puedes ejecutar diferentes tipos de pruebas de manera eficiente. Con los parámetros adecuados, puedes asegurarte de que tu software sea robusto y cumpla con los estándares de calidad deseados.
+Utilizar Bun en tus workflows de desarrollo te permite ejecutar diferentes tipos de pruebas de manera eficiente. Con los parámetros adecuados, puedes garantizar que tu software sea robusto y cumpla con los estándares de calidad deseados.
