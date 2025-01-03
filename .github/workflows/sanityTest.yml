@@ -58,7 +58,7 @@ jobs:
     environment:
       name: ${{ github.event.inputs.environment }}
     env:
-      MOCHA_REPORT_DIR: cypress/tests_reports/chrome_mocha_report
+      MOCHA_REPORT_DIR: 'cypress/tests_reports/chrome_mocha_report'
       TRELLO_TOKEN: ${{ secrets.TRELLO_TOKEN }}
       TRELLO_KEY: ${{ secrets.TRELLO_KEY }}
       DEFAULT_XRAY_KEY: 'GX3-0000'
@@ -137,8 +137,9 @@ jobs:
       run: |
         # Verifica si el archivo de prueba especificado existe
         if [ ! -f "${{ github.event.inputs.test_run }}" ]; then
+          echo "${{ github.event.inputs.test_run }}"
           echo "The specified file does not exist."
-          echo "no_tests=true" >> $GITHUB_OUTPUT
+          echo "no_tests=true" >> $GIT${{ github.event.inputs.test_run }}"B_OUTPUT
         else
           # Busca si el archivo contiene 'expect' o bloques 'it'
           # `grep`: comando utilizado para buscar texto dentro de archivos.
