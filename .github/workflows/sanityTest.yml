@@ -159,6 +159,11 @@ jobs:
         pwd
         ls -la
         echo "Current directory contents:" 
+        ls
+        ls cypress/
+        ls cypress/e2e/
+        ls cypress/e2e/Tests/
+        ls cypress/e2e/Tests/API/
         ls cypress/e2e/Tests/API/Cards/
 
     - name: 🧪 Cypress Run Sanity Test
