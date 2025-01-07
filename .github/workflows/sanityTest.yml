@@ -189,16 +189,9 @@ jobs:
         pwd
         echo "Permissions"
         ls -la
-        echo "Current directory (cypress/) contents:" 
-        ls
-        echo "cypress/e2e/ contents:"
-        ls e2e/
-        echo "e2e/Tests/ contents:"
-        ls e2e/Tests/
-        echo "e2e/Tests/API/ contents:"
-        ls e2e/Tests/API/
-        echo "e2e/Tests/API/Cards/ contents:"
-        ls e2e/Tests/API/Cards/
+        basepath=$(dirname "${{ github.event.inputs.test_run }}")
+        echo "$basepath content:"
+        ls "$basepath"
 
     - name: 🧪 Cypress Run Sanity Test
       id: cypress-run
