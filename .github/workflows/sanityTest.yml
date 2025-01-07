@@ -100,6 +100,7 @@ jobs:
       with:
         name: cypress-structure
         path: temp_artifact/
+        overwrite: true
 
   Xray_Data_Extraction:
     needs: Server_Config
