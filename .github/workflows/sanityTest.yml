@@ -67,6 +67,12 @@ jobs:
     - name: 💻 Checkout Repo
       uses: actions/checkout@v4
 
+    - name: 🗄️ Cache Node Modules
+      uses: actions/cache@v3
+      with:
+        path: node_modules
+        key: ${{ github.event.inputs.system }}-node-${{ hashFiles('**/package-lock.json') }}
+
     - name: 💿 Install Node.js v20
       uses: actions/setup-node@v4
       with:
@@ -83,6 +89,12 @@ jobs:
     - name: 🔎 Check Typescript Code
       run: | #? Corre el linter de TypeScript para verificar errores de sintaxis.
         bun run check:ts
+
+    - name: 📦 Upload Cypress Structure
+      uses: actions/upload-artifact@v2
+      with:
+        name: cypress-structure
+        path: cypress/**
 
   Xray_Data_Extraction:
     needs: Server_Config
@@ -132,6 +144,17 @@ jobs:
       no_tests: ${{ steps.check-tests.outputs.no_tests }}
       result: ${{ job.status }}
     steps:
+    - name: 📥 Download Cypress Structure
+      uses: actions/download-artifact@v2
+      with:
+        name: cypress-structure
+
+    - name: 🗄️ Restore Node Modules Cache
+      uses: actions/cache@v3
+      with:
+        path: node_modules
+        key: ${{ github.event.inputs.system }}-node-${{ hashFiles('**/package-lock.json') }}
+
     - name: Check for Tests
       id: check-tests
       run: |
