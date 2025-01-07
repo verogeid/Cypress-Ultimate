@@ -78,8 +78,9 @@ export default defineConfig({
 			});
 
 on('after:run', (results) => {
-    const videoPath = `/home/runner/work/Cypress-Ultimate/Cypress-Ultimate/cypress/videos/${results.spec.name}.mp4`;
-    const screenshotPath = `/home/runner/work/Cypress-Ultimate/Cypress-Ultimate/cypress/screenshots/${results.spec.name}.png`;
+     
+    const videoPath = `/home/runner/work/Cypress-Ultimate/Cypress-Ultimate/cypress/videos/${results.testFile}.mp4`;
+    const screenshotPath = `/home/runner/work/Cypress-Ultimate/Cypress-Ultimate/cypress/screenshots/${results.testFile}.png`;
 
     console.log(`Resultados de las pruebas:`);
     console.log(`Video: ${videoPath}`);
