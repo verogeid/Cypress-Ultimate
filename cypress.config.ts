@@ -81,7 +81,7 @@ export default defineConfig({
 				//? When browser Chromium was executing test on demoqa, it was having performance issues with the ads before loading the page
 				//? So we need to add the extension "AdBlock" to the browser Chrome, in order to avoid the ads and improve the performance.
 				if (browser.family === 'chromium' && browser.name !== 'electron') {
-					const pathToExtension = path.join(__dirname, 'extension/adblock'); //? path to the extension AdBlock (already downloaded in the project)
+					const pathToExtension = path.join(__dirname, 'cypress/e2e/Tests/AdBlock'); //? path to the extension AdBlock (already downloaded in the project)
 					if (!fs.existsSync(pathToExtension)) throw new Error(`Cannot find extension at ${pathToExtension}`);
 					launchOptions.args.push(`--disable-extensions-except=${pathToExtension}`);
 					launchOptions.args.push(`--load-extension=${pathToExtension}`);
