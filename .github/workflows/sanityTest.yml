@@ -1,4 +1,4 @@
-name:🧪CI/CD SanityTest Pipeline
+name: 🧪CI/CD SanityTest Pipeline
 run-name: ${{github.actor}}👨🏻‍🔬 triggered SanityTest in ${{github.ref_name}}
 
 on:
