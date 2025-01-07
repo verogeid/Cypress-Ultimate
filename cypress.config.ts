@@ -79,7 +79,8 @@ export default defineConfig({
 
 //---- Crear Enlace a Resultados Multimedia -----
 on('after:run', (results) => {
-    results.runs.forEach((run: any) => {
+consolé.log(resulta);
+    /*results.runs.forEach((run: any) => {
         // Suponiendo que 'run' tenga la propiedad 'name' que contiene el nombre del test
         const videoPath = `/home/runner/work/Cypress-Ultimate/Cypress-Ultimate/cypress/videos/${run.name}.mp4`;
         const screenshotPath = `/home/runner/work/Cypress-Ultimate/Cypress-Ultimate/cypress/screenshots/${run.name}.png`;
@@ -87,7 +88,7 @@ on('after:run', (results) => {
         console.log(`Resultados de las pruebas:`);
         console.log(`Video: ${videoPath}`);
         console.log(`Captura de Pantalla: ${screenshotPath}`);
-    });
+    });*/
 });
 //---------------
 
