@@ -78,9 +78,28 @@ export default defineConfig({
 			});
 
 //---- Crear Enlace a Resultados Multimedia -----
+
 on('after:run', (results) => {
-    console.log(JSON.stringify(results, null, 2)); // Imprimir la estructura completa
+    const repoBaseUrl = 'https://github.com/verogeid/Cypress-Ultimate/blob/main/'; // Cambia 'verogeid' por tu usuario en GitHub
+
+    // Recorremos los resultados para generar enlaces
+    if (results.runs && results.runs.length > 0) {
+        results.runs.forEach((run) => {
+            // Vídeos
+            if (run.video) {
+                const videoUrl = `${repoBaseUrl}${run.video.replace('/home/runner/work/Cypress-Ultimate/Cypress-Ultimate/', '')}`;
+                console.log(`Vídeo: ${videoUrl}`);
+            }
+
+            // Imágenes
+            run.screenshots?.forEach((screenshot) => {
+                const screenshotUrl = `${repoBaseUrl}${screenshot.path.replace('/home/runner/work/Cypress-Ultimate/Cypress-Ultimate/', '')}`;
+                console.log(`Imagen: ${screenshotUrl}`);
+            });
+        });
+    }
 });
+
 //---------------
 
 			on('before:browser:launch', (browser, launchOptions) => {
