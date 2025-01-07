@@ -183,7 +183,7 @@ jobs:
         pwd
         echo "Permissions"
         ls -la
-        echo "Current directory contents:" 
+        echo "Current directory (cypress/) contents:" 
         ls
         echo "cypress/e2e/ contents:"
         ls e2e/
