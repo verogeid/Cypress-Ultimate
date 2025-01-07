@@ -2,7 +2,7 @@
 #? Se puede realizar pruebas de cualquier nivel (Unit, Integration, E2E) para esta estrategia de pruebas.
 #? También se usa como "Story Testing" para ejecuciones de pruebas de cobertura de US e importar resultados a Jira XRay.
 
-name: 🧪 CI/CD SanityTest Pipeline
+name: 🧪 old CI/CD SanityTest Pipeline
 run-name: ${{github.actor}}👨🏻‍🔬 triggered SanityTest in ${{github.ref_name}}
 
 on:
