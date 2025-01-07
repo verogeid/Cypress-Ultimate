@@ -95,7 +95,7 @@ jobs:
         mkdir -p temp_artifact  # Crear una carpeta temporal
         cp -R cypress temp_artifact/
         cp package.json temp_artifact/
-        ls -la
+        cp bun.lockb temp_artifact/
 
     - name: 📦 Upload Cypress Structure
       uses: actions/upload-artifact@v4
@@ -161,7 +161,7 @@ jobs:
       uses: actions/cache@v3
       with:
         path: node_modules
-        key: ${{ github.event.inputs.system }}-node-${{ hashFiles('**/package-lock.json') }}
+        key: ${{ github.event.inputs.system }}-node-${{ hashFiles('**/bun.lockb') }}
 
     - name: Check for Tests
       id: check-tests
