@@ -43,7 +43,7 @@ on:
       test_run:
         description: "🚀 Enter the Test Suite to Run."
         required: true
-        default: 'cypress/e2e/Tests/ToolsQA/Elements/GX3-5746-Practice-Form.cy.ts'
+        default: 'cypress/e2e/Tests/ToolsQA/Forms/GX3-5746-Practice-Form.cy.ts'
         #'<Enter the Posix path of your test here>'
         type: string
       xray_tx:
