@@ -77,13 +77,14 @@ export default defineConfig({
 				}
 			});
 
-videoPath = `/home/runner/work/Cypress-Ultimate/Cypress-Ultimate/cypress/videos/${results.spec.name}.mp4`;
-                const screenshotPath = `/home/runner/work/Cypress-Ultimate/Cypress-Ultimate/cypress/screenshots/${results.spec.name}.png`;
+on('after:run', (results) => {
+    const videoPath = `/home/runner/work/Cypress-Ultimate/Cypress-Ultimate/cypress/videos/${results.spec.name}.mp4`;
+    const screenshotPath = `/home/runner/work/Cypress-Ultimate/Cypress-Ultimate/cypress/screenshots/${results.spec.name}.png`;
 
-                console.log(`Resultados de las pruebas:`);
-                console.log(`Video: ${videoPath}`);
-                console.log(`Captura de Pantalla: ${screenshotPath}`);
-            });
+    console.log(`Resultados de las pruebas:`);
+    console.log(`Video: ${videoPath}`);
+    console.log(`Captura de Pantalla: ${screenshotPath}`);
+});
 
 			on('before:browser:launch', (browser, launchOptions) => {
 				//? About this Solution:
