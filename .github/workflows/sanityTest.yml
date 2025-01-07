@@ -198,11 +198,11 @@ jobs:
     - name: 🧪 Cypress Run Sanity Test
       id: cypress-run
       if: steps.check-tests.outputs.no_tests == 'false'
-      uses: cypress-io/github-action@v4
-      with:
-        #run: bun run test:sanity:ci ${{ github.event.inputs.test_run }} --browser ${{ github.event.inputs.browser }}
-        browser: ${{ github.event.inputs.browser }}
-        command: bun run test:sanity:ci ${{ github.event.inputs.test_run }}
+      #uses: cypress-io/github-action@v4
+      #with:
+      run: bun run test:sanity:ci ${{ github.event.inputs.test_run }} --browser ${{ github.event.inputs.browser }}
+      #  browser: ${{ github.event.inputs.browser }}
+      #  command: bun run test:sanity:ci ${{ github.event.inputs.test_run }}
 
   Reports_Generation:
     needs: [ SanityTest, Server_Config, Xray_Data_Extraction ]
