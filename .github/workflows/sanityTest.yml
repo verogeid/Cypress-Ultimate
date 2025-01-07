@@ -90,11 +90,16 @@ jobs:
       run: | #? Corre el linter de TypeScript para verificar errores de sintaxis.
         bun run check:ts
 
+    - name: 📦 Prepare Artifact
+      run: |
+        mkdir -p temp_artifact  # Crear una carpeta temporal
+        cp -R cypress temp_artifact/
+
     - name: 📦 Upload Cypress Structure
       uses: actions/upload-artifact@v4
       with:
         name: cypress-structure
-        path: cypress
+        path: temp_artifact/
 
   Xray_Data_Extraction:
     needs: Server_Config
