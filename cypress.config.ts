@@ -79,7 +79,7 @@ export default defineConfig({
 
 //---- Crear Enlace a Resultados Multimedia -----
 
-on('after:run', (results: Cypress.RunResult) => {
+on('after:run', (results: any) => {
     const repoBaseUrl = 'https://github.com/verogeid/Cypress-Ultimate/blob/main/'; // Cambia 'verogeid' por tu usuario en GitHub
 
     // Asegurémonos de verificar la estructura completa de results
