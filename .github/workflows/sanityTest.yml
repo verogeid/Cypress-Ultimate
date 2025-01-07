@@ -94,7 +94,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: cypress-structure
-        path: cypress/**
+        path: cypress/
 
   Xray_Data_Extraction:
     needs: Server_Config
