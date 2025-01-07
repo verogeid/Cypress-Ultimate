@@ -79,7 +79,7 @@ export default defineConfig({
 
 //---- Crear Enlace a Resultados Multimedia -----
 on('after:run', (results) => {
-console.log(resulta);
+console.log(results);
     /*results.runs.forEach((run: any) => {
         // Suponiendo que 'run' tenga la propiedad 'name' que contiene el nombre del test
         const videoPath = `/home/runner/work/Cypress-Ultimate/Cypress-Ultimate/cypress/videos/${run.name}.mp4`;
