@@ -1,4 +1,6 @@
-#? El Pipeline "Sanity" es una estrategia de prueba perfecta para verificar que un Módulo entero de la App o una funcionalidad específica funcionen como se espera. Se puede realizar pruebas de cualquier nivel (Unit, Integration, E2E) para esta estrategia de pruebas. También se usa como "Story Testing" para ejecuciones de pruebas de cobertura de US (importar resultados a Jira XRay
+#? El Pipeline "Sanity" es una estrategia de prueba perfecta para verificar que un módulo entero de la app o una funcionalidad específica funcionen como se espera.
+#? Se puede realizar pruebas de cualquier nivel (Unit, Integration, E2E) para esta estrategia de pruebas.
+#? También se usa como "Story Testing" para ejecuciones de pruebas de cobertura de US e importar resultados a Jira XRay.
 
 name: 🧪 CI/CD SanityTest Pipeline
 run-name: ${{github.actor}}👨🏻‍🔬 triggered SanityTest in ${{github.ref_name}}
@@ -32,7 +34,6 @@ on:
         default: 'QA'
         type: choice
         options:
-        #? Orden de Deployments...
         - DEV #? donde los developers work
         - SANDBOX #? donde los QA realizan smoke y exploratory testing.
         - QA #? donde los QA realizan smoke, sanity y regression testing.
@@ -70,8 +71,8 @@ jobs:
     - name: 🗄️ Cache Node Modules
       uses: actions/cache@v3
       with:
-        path: node_modules
-        key: ${{ github.event.inputs.system }}-node-${{ hashFiles('**/bun.lockb') }}
+        path: ~/.bun
+        key: ${{ github.event.inputs.system }}-bun-${{ hashFiles('**/bun.lockb') }}
 
     - name: 💿 Install Node.js v20
       uses: actions/setup-node@v4
@@ -90,9 +91,13 @@ jobs:
       run: | #? Corre el linter de TypeScript para verificar errores de sintaxis.
         bun run check:ts
 
+    - name: Check Cypress Installation
+      run: |
+        which cypress || bun install cypress
+
     - name: 📦 Prepare Artifact
       run: |
-        mkdir -p temp_artifact  # Crear una carpeta temporal
+        mkdir -p temp_artifact
         cp -R cypress temp_artifact/
         cp package.json temp_artifact/
         cp bun.lockb temp_artifact/
@@ -104,10 +109,6 @@ jobs:
         path: temp_artifact/
         overwrite: true
 
-    - name: Check Cypress Installation
-      run: |
-        which cypress || echo "Cypress is not found"
-
   Xray_Data_Extraction:
     needs: Server_Config
     runs-on: ${{ github.event.inputs.system }}
@@ -117,17 +118,6 @@ jobs:
     - name: Extract Xray TX from Selected File
       id: extract-xray-data
       run: |
-        
-        # Extraer el ID de ejecución
-
-        # Verifica si el nombre del archivo (sin la ruta) coincide con el patrón esperado.
-        # El patrón busca un nombre de archivo en el formato 'GX[1-4]-[número][guion bajo o guion][cualquier cosa].cy.ts o .cy.js'.
-        # ^(GX[1-4])       : Comienza con "GX" seguido de un número del 1 al 4.
-        # -([0-9]+)       : Un guion seguido de uno o más dígitos numéricos.
-        # (_|-)            : Un guion bajo o un guion después del número.
-        # (.+)            : Cualquier secuencia de caracteres.
-        # \.(cy\.ts|cy\.js)$ : Termina con '.cy.ts' o '.cy.js'.
-
         if [[ "$(basename "${{ github.event.inputs.test_run }}")" =~ ^(GX[1-4])-([0-9]+)(_|-)(.+)\.(cy\.ts|cy\.js)$ ]]; then
           xray_tx="${BASH_REMATCH[1]}-${BASH_REMATCH[2]}"
           echo "Extracted Xray TX: $xray_tx"
@@ -136,17 +126,12 @@ jobs:
     - name: Assign Xray TX
       id: assign-xray-data
       run: |
-        # Definición de constantes para valores por defecto
         testexec_key="${{ needs.Server_Config.outputs.DEFAULT_XRAYKEY }}"
-
-        # Asignar valores a las variables según lógica
         if [ -n "${{ github.event.inputs.xray_tx }}" ]; then
           testexec_key="${{ github.event.inputs.xray_tx }}"
         elif [ -n "$xray_tx" ]; then
           testexec_key="$xray_tx"
         fi
-
-        echo "Final Test Execution Key: $testexec_key"
         echo "testexec_key=$testexec_key" >> $GITHUB_OUTPUT
 
   SanityTest:
@@ -169,53 +154,30 @@ jobs:
     - name: 🗄️ Restore Node Modules Cache
       uses: actions/cache@v3
       with:
-        path: node_modules
-        key: ${{ github.event.inputs.system }}-node-${{ hashFiles('**/bun.lockb') }}
+        path: ~/.bun
+        key: ${{ github.event.inputs.system }}-bun-${{ hashFiles('**/bun.lockb') }}
+
+    - name: Check Cypress Installation
+      run: |
+        which cypress || bun install cypress
 
     - name: Check for Tests
       id: check-tests
       run: |
-        # Verifica si el archivo de prueba especificado existe
         if [ ! -f "${{ github.event.inputs.test_run }}" ]; then
-          echo "${{ github.event.inputs.test_run }}"
-          echo "The specified file does not exist."
-          echo "no_tests=true" >> $GITHUB_OUTPUT 
+          echo "no_tests=true" >> $GITHUB_OUTPUT
         else
-          # Busca si el archivo contiene 'expect' o bloques 'it'
-          # `grep`: comando utilizado para buscar texto dentro de archivos.
-          # `-q`: opción que silencia la salida de `grep`; solo devuelve un código de salida.
-          # `"it("`: patrón de búsqueda.
-          # `${{ github.event.inputs.test_run }}`: ruta del archivo de prueba.
-
-          if grep -q "expect" "${{ github.event.inputs.test_run }}" || grep -q "it(" "${{ github.event.inputs.test_run }}"; then 
-            echo "Tests found."
-            echo "no_tests=false" >> $GITHUB_OUTPUT 
-          else 
-            echo "No tests found in the file." 
+          if grep -q "expect" "${{ github.event.inputs.test_run }}" || grep -q "it(" "${{ github.event.inputs.test_run }}"; then
+            echo "no_tests=false" >> $GITHUB_OUTPUT
+          else
             echo "no_tests=true" >> $GITHUB_OUTPUT
           fi
         fi
 
-        echo "Current directory:"
-        pwd
-        echo "Permissions"
-        ls -la
-        basepath=$(dirname "${{ github.event.inputs.test_run }}")
-        echo "$basepath content:"
-        ls "$basepath"
-
-    - name: Check Cypress Installation
-      run: |
-        which cypress || echo "Cypress is not found"
-
     - name: 🧪 Cypress Run Sanity Test
       id: cypress-run
       if: steps.check-tests.outputs.no_tests == 'false'
-      #uses: cypress-io/github-action@v4
-      #with:
-      run: bun run test:sanity:ci ${{ github.event.inputs.test_run }} --browser ${{ github.event.inputs.browser }}
-      #  browser: ${{ github.event.inputs.browser }}
-      #  command: bun run test:sanity:ci ${{ github.event.inputs.test_run }}
+      run: bun x cypress run --browser ${{ github.event.inputs.browser }} --spec ${{ github.event.inputs.test_run }}
 
   Reports_Generation:
     needs: [ SanityTest, Server_Config, Xray_Data_Extraction ]
