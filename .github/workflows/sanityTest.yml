@@ -71,7 +71,7 @@ jobs:
       uses: actions/cache@v3
       with:
         path: node_modules
-        key: ${{ github.event.inputs.system }}-node-${{ hashFiles('**/package-lock.json') }}
+        key: ${{ github.event.inputs.system }}-node-${{ hashFiles('**/bun.lockb') }}
 
     - name: 💿 Install Node.js v20
       uses: actions/setup-node@v4
@@ -198,11 +198,11 @@ jobs:
     - name: 🧪 Cypress Run Sanity Test
       id: cypress-run
       if: steps.check-tests.outputs.no_tests == 'false'
-      #uses: cypress-io/github-action@v4
-      #with:
-      run: bun run test:sanity:ci ${{ github.event.inputs.test_run }} --browser ${{ github.event.inputs.browser }}
-        #  browser: ${{ github.event.inputs.browser }}
-        #  command: bun run test:sanity:ci ${{ github.event.inputs.test_run }} 
+      uses: cypress-io/github-action@v4
+      with:
+        #run: bun run test:sanity:ci ${{ github.event.inputs.test_run }} --browser ${{ github.event.inputs.browser }}
+        browser: ${{ github.event.inputs.browser }}
+        command: bun run test:sanity:ci ${{ github.event.inputs.test_run }}
 
   Reports_Generation:
     needs: [ SanityTest, Server_Config, Xray_Data_Extraction ]
