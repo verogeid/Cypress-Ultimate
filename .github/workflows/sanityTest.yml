@@ -179,7 +179,7 @@ jobs:
       fi
     fi
 
-    - name: 🧪 Cypress Run Sanity Test
+  - name: 🧪 Cypress Run Sanity Test
       id: cypress-run
       if: steps.check-tests.outputs.no_tests == 'false'
       run: bun x cypress run --browser ${{ github.event.inputs.browser }} --spec ${{ github.event.inputs.test_run }}
