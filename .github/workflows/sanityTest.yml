@@ -206,6 +206,15 @@ jobs:
         path: ~/.bun
         key: ${{ github.event.inputs.system }}-bun-${{ hashFiles('**/bun.lockb') }}
 
+    - name: 📬 Check for JRM and Install if Missing
+      run: |
+        if ! command -v jrm &>/dev/null; then
+          echo "jrm not found, installing..."
+          bun add -d junit-report-merger
+        else
+          echo "jrm is already installed."
+        fi
+
     - name: 📬 Generate JUnit/Mocha Report
       if: always() && needs.SanityTest.outputs.no_tests == 'false'
       run: bun run chrome:report
