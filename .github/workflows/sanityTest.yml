@@ -104,6 +104,10 @@ jobs:
         path: temp_artifact/
         overwrite: true
 
+    - name: Check Cypress Installation
+      run: |
+        which cypress || echo "Cypress is not found"
+
   Xray_Data_Extraction:
     needs: Server_Config
     runs-on: ${{ github.event.inputs.system }}
@@ -199,6 +203,10 @@ jobs:
         basepath=$(dirname "${{ github.event.inputs.test_run }}")
         echo "$basepath content:"
         ls "$basepath"
+
+    - name: Check Cypress Installation
+      run: |
+        which cypress || echo "Cypress is not found"
 
     - name: 🧪 Cypress Run Sanity Test
       id: cypress-run
