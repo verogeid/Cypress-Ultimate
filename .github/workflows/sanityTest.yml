@@ -165,21 +165,21 @@ jobs:
     - name: Check for Tests
       id: check-tests
       run: |
-       test_run="${{ github.event.inputs.test_run }}"
-      # Elimina los espacios al principio y al final
-      test_run=$(echo "$test_run" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+        test_run="${{ github.event.inputs.test_run }}"
+        # Elimina los espacios al principio y al final
+        test_run=$(echo "$test_run" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
     
-      if [ ! -f "$test_run" ]; then
-        echo "no_tests=true" >> $GITHUB_OUTPUT
-      else
-        if grep -q "expect" "$test_run" || grep -q "it(" "$test_run"; then
-          echo "no_tests=false" >> $GITHUB_OUTPUT
-        else
+        if [ ! -f "$test_run" ]; then
           echo "no_tests=true" >> $GITHUB_OUTPUT
+        else
+          if grep -q "expect" "$test_run" || grep -q "it(" "$test_run"; then
+            echo "no_tests=false" >> $GITHUB_OUTPUT
+          else
+            echo "no_tests=true" >> $GITHUB_OUTPUT
+          fi
         fi
-      fi
 
-  - name: 🧪 Cypress Run Sanity Test
+    - name: 🧪 Cypress Run Sanity Test
       id: cypress-run
       if: steps.check-tests.outputs.no_tests == 'false'
       run: bun x cypress run --browser ${{ github.event.inputs.browser }} --spec ${{ github.event.inputs.test_run }}
