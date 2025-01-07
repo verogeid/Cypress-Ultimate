@@ -42,7 +42,7 @@ on:
       test_run:
         description: "🚀 Enter the Test Suite to Run."
         required: true
-        default: '<ingresa aquí el path Posix de tu test>'
+        default: '<Enter the Posix path of your test here>'
         type: string
       xray_tx:
         description: "🚀 Enter the Test Execution ID. The TX key will be extracted from the filename if it follows the format GX[1-4]-[0-9][_|-]**.cy.[js|ts]. You can use your own in the following field. (Def: GX3-0000)"
