@@ -185,16 +185,14 @@ jobs:
         ls -la
         echo "Current directory contents:" 
         ls
-        echo "cypress/ contents:"
-        ls cypress/
         echo "cypress/e2e/ contents:"
-        ls cypress/e2e/
-        echo "cypress/e2e/Tests/ contents:"
-        ls cypress/e2e/Tests/
-        echo "cypress/e2e/Tests/API/ contents:"
-        ls cypress/e2e/Tests/API/
-        echo "cypress/e2e/Tests/API/Cards/ contents:"
-        ls cypress/e2e/Tests/API/Cards/
+        ls e2e/
+        echo "e2e/Tests/ contents:"
+        ls e2e/Tests/
+        echo "e2e/Tests/API/ contents:"
+        ls e2e/Tests/API/
+        echo "e2e/Tests/API/Cards/ contents:"
+        ls e2e/Tests/API/Cards/
 
     - name: 🧪 Cypress Run Sanity Test
       id: cypress-run
