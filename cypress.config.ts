@@ -79,22 +79,7 @@ export default defineConfig({
 
 //---- Crear Enlace a Resultados Multimedia -----
 on('after:run', (results) => {
-    //console.log(results);
-
-    // Verifica que la propiedad 'runs' esté presente
-    if (results && results.runs && results.runs.length > 0) {
-        const run = results.runs[0];
-
-        // Accede al video y las capturas de pantalla
-        const videoPath = run.video;
-        const screenshots = run.screenshots;
-
-        console.log(`Video Path: ${videoPath}`);
-        
-        screenshots.forEach((screenshot: any) => {
-            console.log(`Screenshot Path: ${screenshot.path}`);
-        });
-    }
+    console.log(JSON.stringify(results, null, 2)); // Imprimir la estructura completa
 });
 //---------------
 
