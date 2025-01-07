@@ -102,7 +102,8 @@ jobs:
         cp -R cypress temp_artifact/
         cp package.json temp_artifact/
         cp bun.lockb temp_artifact/
-        cp cypress.config.ts temp_artifact/
+        cp cypress.* temp_artifact/
+        cp tsconfig.* temp_artifact/
 
     - name: 📦 Upload Cypress Structure
       uses: actions/upload-artifact@v4
