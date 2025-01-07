@@ -190,6 +190,22 @@ jobs:
     needs: [ SanityTest, Server_Config, Xray_Data_Extraction ]
     runs-on: ${{ github.event.inputs.system }}
     steps:
+    - name: 🍙 Bun Setup
+      uses: oven-sh/setup-bun@v2
+      with:
+        bun-version: latest
+
+    - name: 📥 Download Cypress Structure
+      uses: actions/download-artifact@v4
+      with:
+        name: cypress-structure
+
+    - name: 🗄️ Restore Node Modules Cache
+      uses: actions/cache@v3
+      with:
+        path: ~/.bun
+        key: ${{ github.event.inputs.system }}-bun-${{ hashFiles('**/bun.lockb') }}
+
     - name: 📬 Generate JUnit/Mocha Report
       if: always() && needs.SanityTest.outputs.no_tests == 'false'
       run: bun run chrome:report
