@@ -206,6 +206,12 @@ jobs:
         path: ~/.bun
         key: ${{ github.event.inputs.system }}-bun-${{ hashFiles('**/bun.lockb') }}
 
+    - name: 📂 Ensure Test Result Directories Exist
+      run: |
+        mkdir -p cypress/tests_results/junit/chrome
+        mkdir -p cypress/tests_results/mocha/chrome
+        mkdir -p cypress/tests_results
+
     - name: 📬 Check for JRM and Install if Missing
       run: |
         if ! command -v jrm &>/dev/null; then
@@ -213,6 +219,20 @@ jobs:
           bun add -d junit-report-merger
         else
           echo "jrm is already installed."
+        fi
+
+    - name: 📥 Run Chrome Report
+      run: |
+        if [ -d "cypress/tests_results/junit/chrome" ] && [ "$(ls -A cypress/tests_results/junit/chrome)" ]; then
+          bun run merge:junit:c:report
+        else
+          echo "No JUnit results found, skipping merge."
+        fi
+
+        if [ -d "cypress/tests_results/mocha/chrome" ] && [ "$(ls -A cypress/tests_results/mocha/chrome)" ]; then
+          bun run merge:json:c:report
+        else
+          echo "No Mocha results found, skipping merge."
         fi
 
     - name: 📬 Generate JUnit/Mocha Report
