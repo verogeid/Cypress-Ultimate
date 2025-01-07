@@ -79,23 +79,24 @@ export default defineConfig({
 
 //---- Crear Enlace a Resultados Multimedia -----
 
-on('after:run', (results) => {
-    const repoBaseUrl = 'https://github.com/verogeid/Cypress-Ultimate/blob/main/'; // Cambia 'verogeid' por tu usuario en GitHub
+on('after:run', (results: Cypress.CypressRunResult | Cypress.CypressFailedRunResult) => {
+    const repoBaseUrl = 'https://github.com/verogeid/Cypress-Ultimate/blob/main/';
 
-    // Recorremos los resultados para generar enlaces
-    if (results.runs && results.runs.length > 0) {
-        results.runs.forEach((run) => {
-            // Vídeos
-            if (run.video) {
-                const videoUrl = `${repoBaseUrl}${run.video.replace('/home/runner/work/Cypress-Ultimate/Cypress-Ultimate/', '')}`;
-                console.log(`Vídeo: ${videoUrl}`);
-            }
+    // Asegurémonos de verificar la estructura completa de results
+    console.log(JSON.stringify(results, null, 2)); 
 
-            // Imágenes
-            run.screenshots?.forEach((screenshot) => {
-                const screenshotUrl = `${repoBaseUrl}${screenshot.path.replace('/home/runner/work/Cypress-Ultimate/Cypress-Ultimate/', '')}`;
-                console.log(`Imagen: ${screenshotUrl}`);
-            });
+    // Ahora intentamos acceder de manera más segura
+    if (results && Array.isArray(results?.videos)) {
+        results.videos.forEach((video: { name: string; path: string }) => {
+            const videoUrl = `${repoBaseUrl}${video.path.replace('/home/runner/work/Cypress-Ultimate/Cypress-Ultimate/', '')}`;
+            console.log(`Vídeo: ${videoUrl}`);
+        });
+    }
+
+    if (results && Array.isArray(results?.screenshots)) {
+        results.screenshots.forEach((screenshot: { name: string; path: string }) => {
+            const screenshotUrl = `${repoBaseUrl}${screenshot.path.replace('/home/runner/work/Cypress-Ultimate/Cypress-Ultimate/', '')}`;
+            console.log(`Imagen: ${screenshotUrl}`);
         });
     }
 });
