@@ -77,15 +77,19 @@ export default defineConfig({
 				}
 			});
 
+//---- Crear Enlace a Resultados Multimedia -----
 on('after:run', (results) => {
-     
-    const videoPath = `/home/runner/work/Cypress-Ultimate/Cypress-Ultimate/cypress/videos/${results.testFile}.mp4`;
-    const screenshotPath = `/home/runner/work/Cypress-Ultimate/Cypress-Ultimate/cypress/screenshots/${results.testFile}.png`;
+    results.runs.forEach((run: any) => {
+        // Suponiendo que 'run' tenga la propiedad 'name' que contiene el nombre del test
+        const videoPath = `/home/runner/work/Cypress-Ultimate/Cypress-Ultimate/cypress/videos/${run.name}.mp4`;
+        const screenshotPath = `/home/runner/work/Cypress-Ultimate/Cypress-Ultimate/cypress/screenshots/${run.name}.png`;
 
-    console.log(`Resultados de las pruebas:`);
-    console.log(`Video: ${videoPath}`);
-    console.log(`Captura de Pantalla: ${screenshotPath}`);
+        console.log(`Resultados de las pruebas:`);
+        console.log(`Video: ${videoPath}`);
+        console.log(`Captura de Pantalla: ${screenshotPath}`);
+    });
 });
+//---------------
 
 			on('before:browser:launch', (browser, launchOptions) => {
 				//? About this Solution:
