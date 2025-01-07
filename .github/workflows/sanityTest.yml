@@ -94,7 +94,7 @@ jobs:
       run: |
         mkdir -p temp_artifact  # Crear una carpeta temporal
         cp -R cypress temp_artifact/
-        cp package-lock.json temp_artifact/
+        cp package.json temp_artifact/
 
     - name: 📦 Upload Cypress Structure
       uses: actions/upload-artifact@v4
