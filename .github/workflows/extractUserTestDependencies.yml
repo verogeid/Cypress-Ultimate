@@ -26,23 +26,37 @@ jobs:
           fi
           echo "Archivo de prueba validado: $TEST_POSIX"
 
+      - name: Parse ESLint Config y Extraer Aliases
+        id: extract-aliases
+        run: |
+          if [[ ! -f ".eslintrc.json" ]]; then
+            echo "Archivo .eslintrc.json no encontrado"
+            exit 1
+          fi
+          ALIAS_MAP=$(jq -r '.settings["import/resolver"].alias.map[] | @csv' .eslintrc.json | sed 's/"//g' || echo "")
+          if [[ -z "$ALIAS_MAP" ]]; then
+            echo "No se encontraron alias en .eslintrc.json, continuando sin resolver rutas de alias."
+          else
+            echo "Aliases encontrados:"
+            echo "$ALIAS_MAP"
+            echo "$ALIAS_MAP" | while IFS=',' read -r alias path; do
+              echo "$alias=$path" >> $GITHUB_ENV
+            done
+          fi
+
       - name: Buscar referencias en el archivo de prueba
         id: find-imports
         run: |
           TEST_POSIX="${{ inputs.test_posix }}"
           echo "Contenido del archivo de prueba:"
           cat "$TEST_POSIX"
-          
-          FILE_REFERENCES=$(grep -Eo 'import.*from\s+["'\''][^"'\'' ]+["'\'']\s*;' "$TEST_POSIX" || echo "")
-
+          FILE_REFERENCES=$(awk '/import\s+[^\n]+?["'\''][^"'\'' ]+["'\''];/ {print $0}' "$TEST_POSIX" || echo "")
           if [[ -z "$FILE_REFERENCES" ]]; then
             echo "No se encontraron referencias en el archivo de prueba."
             exit 1
           fi
-
           echo "Referencias encontradas:"
           echo "$FILE_REFERENCES"
-
           RESOLVED_FILES=""
           while IFS= read -r file; do
             if [[ "$file" == @* ]]; then
@@ -56,7 +70,6 @@ jobs:
               RESOLVED_FILES+="$file"$'\n'
             fi
           done <<< "$FILE_REFERENCES"
-
           echo "$RESOLVED_FILES" | sort | uniq > resolved_files.txt
           echo "Rutas resueltas:"
           cat resolved_files.txt
