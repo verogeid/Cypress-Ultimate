@@ -50,8 +50,7 @@ jobs:
           TEST_POSIX="${{ inputs.test_posix }}"
           echo "Contenido del archivo de prueba:"
           cat "$TEST_POSIX"
-          FILE_REFERENCES=$(grep -Eo 'import.*from\s+["'\''][^"'\'' ]+["'\'']' "$TEST_POSIX" | grep -Eo '"[^"]+"' | tr -d '"' || echo "")
-
+          FILE_REFERENCES=$(grep -Eo 'import\s+.*\s+from\s+["'\''][^"'\'' ]+["'\'']' "$TEST_POSIX" | grep -Eo '"[^"]+"' | tr -d '"' || echo "")
           if [[ -z "$FILE_REFERENCES" ]]; then
             echo "No se encontraron referencias en el archivo de prueba."
           fi
