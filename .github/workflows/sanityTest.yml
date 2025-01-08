@@ -87,6 +87,9 @@ jobs:
       with:
         bun-version: latest
 
+    - name: 🧬 Install Project Dependencies
+      run: bun install
+
     - name: 🔎 Check Typescript Code
       run: | #? Corre el linter de TypeScript para verificar errores de sintaxis.
         bun run check:ts
@@ -136,9 +139,6 @@ jobs:
 
         echo "Using testexec_key: $testexec_key"
         echo "testexec_key=$testexec_key" >> $GITHUB_OUTPUT
-
-    - name: 🧬 Install Project Dependencies
-      run: bun install
 
     #- name: Check Cypress Installation
     #  run: |
