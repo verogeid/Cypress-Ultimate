@@ -61,15 +61,17 @@ jobs:
           
           RESOLVED_FILES=""
           while IFS= read -r file; do
-            if [[ "$file" == @* ]]; then
-              alias=$(echo "$file" | cut -d/ -f1)
-              path=$(echo "$file" | cut -d/ -f2-)
-              real_path=$(eval echo "\$$alias")/$path
-              RESOLVED_FILES+="$real_path"$'\n'
-            elif [[ "$file" == cypress/* ]]; then
-              RESOLVED_FILES+="$file"$'\n'
-            else
-              RESOLVED_FILES+="$file"$'\n'
+            if [[ -n "$file" ]]; then  # Solo agregar líneas no vacías
+              if [[ "$file" == @* ]]; then
+                alias=$(echo "$file" | cut -d/ -f1)
+                path=$(echo "$file" | cut -d/ -f2-)
+                real_path=$(eval echo "\$$alias")/$path
+                RESOLVED_FILES+="$real_path"$'\n'
+              elif [[ "$file" == cypress/* ]]; then
+                RESOLVED_FILES+="$file"$'\n'
+              else
+                RESOLVED_FILES+="$file"$'\n'
+              fi
             fi
           done <<< "$FILE_REFERENCES"
           
