@@ -13,33 +13,36 @@ jobs:
   extract_files:
     runs-on: ubuntu-latest
     steps:
-      # Clonar el repositorio
+      # Paso 1: Descargar el código del repositorio
       - name: Check out code
         uses: actions/checkout@v2
 
-      # Validar la existencia del archivo de prueba proporcionado
+      # Paso 2: Validar que el archivo de prueba existe
       - name: Validar entrada de archivo de prueba
         id: validate-input
         run: |
           TEST_POSIX="${{ inputs.test_posix }}"
+          # Verifica si el archivo de prueba especificado existe
           if [[ ! -f "$TEST_POSIX" ]]; then
             echo "El archivo especificado no existe: $TEST_POSIX"
-            exit 1
+            exit 1  # Termina el flujo si no existe el archivo
           fi
           echo "Archivo de prueba validado: $TEST_POSIX"
 
-      # Extraer los alias definidos en el archivo .eslintrc.json
+      # Paso 3: Leer el archivo .eslintrc.json y extraer los alias definidos para resolver rutas
       - name: Parse ESLint Config y Extraer Aliases
         id: extract-aliases
         run: |
+          # Verifica si el archivo .eslintrc.json existe
           if [[ ! -f ".eslintrc.json" ]]; then
             echo "Archivo .eslintrc.json no encontrado"
-            exit 1
+            exit 1  # Termina el flujo si no existe el archivo .eslintrc.json
           fi
 
-          # Obtener los alias desde el archivo .eslintrc.json
+          # Extrae los alias desde el archivo .eslintrc.json usando jq
           ALIAS_MAP=$(jq -r '.settings["import/resolver"].alias.map[] | @csv' .eslintrc.json | sed 's/"//g' || echo "")
 
+          # Si no se encuentran alias, termina el flujo
           if [[ -z "$ALIAS_MAP" ]]; then
             echo "No se encontraron alias en .eslintrc.json"
             exit 1
@@ -48,20 +51,21 @@ jobs:
           echo "Aliases encontrados:"
           echo "$ALIAS_MAP"
 
-          # Exportar los alias como variables de entorno
+          # Para cada alias encontrado, lo exporta como una variable de entorno
           echo "$ALIAS_MAP" | while IFS=',' read -r alias path; do
             echo "$alias=$path" >> $GITHUB_ENV
           done
 
-      # Buscar referencias a import y cy.fixture en el archivo de prueba
+      # Paso 4: Buscar las referencias a archivos en las sentencias import y cy.fixture
       - name: Buscar referencias en el archivo de prueba
         id: find-imports
         run: |
           TEST_POSIX="${{ inputs.test_posix }}"
-          
-          # Extraer referencias de sentencias import y cy.fixture
-          FILE_REFERENCES=$(grep -Eo '(import .* from|cy.fixture.*)' "$TEST_POSIX" | grep -Eo '"[^"]+"' | tr -d '"' || echo "")
 
+          # Buscar todas las sentencias import y cy.fixture en el archivo de prueba
+          FILE_REFERENCES=$(grep -Eo '(import .* from|cy.fixture.*)' "$TEST_POSIX" | grep -Eo '"[^"]+"' | tr -d '"' || echo "")
+
+          # Si no se encuentran referencias, termina el flujo
           if [[ -z "$FILE_REFERENCES" ]]; then
             echo "No se encontraron referencias en el archivo de prueba."
             exit 1
@@ -70,36 +74,38 @@ jobs:
           echo "Referencias encontradas:"
           echo "$FILE_REFERENCES"
 
-          # Resolver alias y normalizar rutas
+          # Paso 5: Resolver las rutas de los archivos utilizando los alias y las rutas relativas
           RESOLVED_FILES=""
           while IFS= read -r file; do
+            # Si la ruta comienza con un alias, lo resolvemos
             if [[ "$file" == @* ]]; then
-              # Resolver rutas basadas en alias
-              alias=$(echo "$file" | cut -d/ -f1)
-              path=$(echo "$file" | cut -d/ -f2-)
+              alias=$(echo "$file" | cut -d/ -f1)  # Extrae el alias
+              path=$(echo "$file" | cut -d/ -f2-)  # Extrae la ruta después del alias
+              # Evalúa la variable de entorno del alias para obtener la ruta real
               real_path=$(eval echo "\$$alias")/$path
               RESOLVED_FILES+="$real_path"$'\n'
+            # Si la ruta comienza con 'cypress/', la dejamos tal como está
             elif [[ "$file" == cypress/* ]]; then
-              # Mantener rutas relativas a Cypress
               RESOLVED_FILES+="$file"$'\n'
             else
               echo "Ruta no compatible: $file"
             fi
           done <<< "$FILE_REFERENCES"
 
-          # Eliminar duplicados y guardar las rutas resueltas
+          # Elimina rutas duplicadas y guarda las rutas resueltas en un archivo temporal
           echo "$RESOLVED_FILES" | sort | uniq > resolved_files.txt
           echo "Rutas resueltas:"
           cat resolved_files.txt
 
-      # Crear un archivo JSON con las rutas resueltas
+      # Paso 6: Crear un archivo JSON con las rutas resueltas
       - name: Crear JSON con rutas de archivos
         run: |
+          # Convierte las rutas resueltas en un archivo JSON con la estructura { "files": [...] }
           jq -Rn 'inputs | split("\n") | map(select(length > 0)) | {files: .}' < resolved_files.txt > resolved_files.json
           echo "Archivo JSON generado:"
           cat resolved_files.json
 
-      # Subir el archivo JSON generado como artefacto
+      # Paso 7: Subir el archivo JSON generado como un artefacto
       - name: Guardar JSON como artefacto
         uses: actions/upload-artifact@v3
         with:
