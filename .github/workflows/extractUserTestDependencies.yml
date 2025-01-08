@@ -48,20 +48,11 @@ jobs:
         id: find-imports
         run: |
           TEST_POSIX="${{ inputs.test_posix }}"
-          echo "Contenido del archivo de prueba:"
-          cat "$TEST_POSIX"
-          
-          FILE_REFERENCES=$(grep -Eo 'import\s+.*\s+from\s+["'\''][^"'\'' ]+["'\''];' "$TEST_POSIX" || echo "")
-          if [[ -z "$FILE_REFERENCES" ]]; then
-            echo "No se encontraron referencias en el archivo de prueba."
-            exit 1
-          fi
-          echo "Referencias encontradas:"
-          echo "$FILE_REFERENCES"
-          
-          RESOLVED_FILES=""
-          while IFS= read -r file; do
-            if [[ "$file" != "" ]]; then
+          if grep -q 'import\s\+.*\s\+from\s\+["'\''][^"'\'' ]\+["'\''];' "$TEST_POSIX"; then
+            FILE_REFERENCES=$(grep -Eo 'import\s+.*\s+from\s+["'\''][^"'\'' ]+["'\''];' "$TEST_POSIX")
+
+            RESOLVED_FILES=""
+            while IFS= read -r file; do
               if [[ "$file" == @* ]]; then
                 alias=$(echo "$file" | cut -d/ -f1)
                 path=$(echo "$file" | cut -d/ -f2-)
@@ -72,18 +63,13 @@ jobs:
               else
                 RESOLVED_FILES+="$file"$'\n'
               fi
-            fi
-          done <<< "$FILE_REFERENCES"
-          
-          RESOLVED_FILES=$(echo "$RESOLVED_FILES" | sort | uniq)
+            done <<< "$FILE_REFERENCES"
 
-          jq -n --arg source "$TEST_POSIX" --argjson files "$(echo "$RESOLVED_FILES" | jq -R . | jq -s .)" \
-          '{source: $source, files: $files}' > resolved_files.json
-
-      - name: Mostrar JSON generado
-        run: |
-          echo "Archivo JSON generado:"
-          cat resolved_files.json
+            jq -Rn --arg source "$TEST_POSIX" '{
+              source: $source,
+              files: (inputs | split("\n") | map(select(length > 0)))
+            }' <<< "$RESOLVED_FILES" > resolved_files.json
+          fi
 
       - name: Guardar JSON como artefacto
         uses: actions/upload-artifact@v3
