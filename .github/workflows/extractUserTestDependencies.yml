@@ -48,28 +48,37 @@ jobs:
         id: find-imports
         run: |
           TEST_POSIX="${{ inputs.test_posix }}"
-          if grep -q 'import\s\+.*\s\+from\s\+["'\''][^"'\'' ]\+["'\''];' "$TEST_POSIX"; then
-            FILE_REFERENCES=$(grep -Eo 'import\s+.*\s+from\s+["'\''][^"'\'' ]+["'\''];' "$TEST_POSIX")
-
-            RESOLVED_FILES=""
-            while IFS= read -r file; do
-              if [[ "$file" == @* ]]; then
-                alias=$(echo "$file" | cut -d/ -f1)
-                path=$(echo "$file" | cut -d/ -f2-)
-                real_path=$(eval echo "\$$alias")/$path
-                RESOLVED_FILES+="$real_path"$'\n'
-              elif [[ "$file" == cypress/* ]]; then
-                RESOLVED_FILES+="$file"$'\n'
-              else
-                RESOLVED_FILES+="$file"$'\n'
-              fi
-            done <<< "$FILE_REFERENCES"
-
-            jq -Rn --arg source "$TEST_POSIX" '{
-              source: $source,
-              files: (inputs | split("\n") | map(select(length > 0)))
-            }' <<< "$RESOLVED_FILES" > resolved_files.json
+          echo "Contenido del archivo de prueba:"
+          cat "$TEST_POSIX"
+          FILE_REFERENCES=$(grep -Eo 'import\s+.*\s+from\s+["'\''][^"'\'' ]+["'\''];' "$TEST_POSIX")
+          if [[ -z "$FILE_REFERENCES" ]]; then
+            echo "No se encontraron referencias en el archivo de prueba."
+            exit 1
           fi
+          echo "Referencias encontradas:"
+          echo "$FILE_REFERENCES"
+          RESOLVED_FILES=""
+          while IFS= read -r file; do
+            if [[ "$file" == @* ]]; then
+              alias=$(echo "$file" | cut -d/ -f1)
+              path=$(echo "$file" | cut -d/ -f2-)
+              real_path=$(eval echo "\$$alias")/$path
+              RESOLVED_FILES+="$real_path"$'\n'
+            elif [[ "$file" == cypress/* ]]; then
+              RESOLVED_FILES+="$file"$'\n'
+            else
+              RESOLVED_FILES+="$file"$'\n'
+            fi
+          done <<< "$FILE_REFERENCES"
+          echo "$RESOLVED_FILES" | sort | uniq > resolved_files.txt
+          echo "Rutas resueltas:"
+          cat resolved_files.txt
+
+      - name: Crear JSON con rutas de archivos
+        run: |
+          jq -Rn 'inputs | split("\n") | map(select(length > 0)) | {files: .}' < resolved_files.txt > resolved_files.json
+          echo "Archivo JSON generado:"
+          cat resolved_files.json
 
       - name: Guardar JSON como artefacto
         uses: actions/upload-artifact@v3
