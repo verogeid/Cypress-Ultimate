@@ -61,7 +61,7 @@ jobs:
           
           RESOLVED_FILES=""
           while IFS= read -r file; do
-            if [[ -n "$file" ]]; then  # Solo agregar líneas no vacías
+            if [[ "$file" != "" ]]; then
               if [[ "$file" == @* ]]; then
                 alias=$(echo "$file" | cut -d/ -f1)
                 path=$(echo "$file" | cut -d/ -f2-)
