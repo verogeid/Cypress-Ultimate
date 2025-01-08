@@ -33,7 +33,6 @@ jobs:
       - name: Parse ESLint Config y Extraer Aliases
         id: extract-aliases
         run: |
-          # Verifica si el archivo .eslintrc.json existe
           if [[ ! -f ".eslintrc.json" ]]; then
             echo "Archivo .eslintrc.json no encontrado"
             exit 1  # Termina el flujo si no existe el archivo .eslintrc.json
@@ -42,19 +41,18 @@ jobs:
           # Extrae los alias desde el archivo .eslintrc.json usando jq
           ALIAS_MAP=$(jq -r '.settings["import/resolver"].alias.map[] | @csv' .eslintrc.json | sed 's/"//g' || echo "")
 
-          # Si no se encuentran alias, termina el flujo
+          # Si no se encuentran alias, se muestra un mensaje, pero el flujo sigue adelante
           if [[ -z "$ALIAS_MAP" ]]; then
-            echo "No se encontraron alias en .eslintrc.json"
-            exit 1
+            echo "No se encontraron alias en .eslintrc.json, continuando sin resolver rutas de alias."
+          else
+            echo "Aliases encontrados:"
+            echo "$ALIAS_MAP"
+
+            # Para cada alias encontrado, lo exporta como una variable de entorno
+            echo "$ALIAS_MAP" | while IFS=',' read -r alias path; do
+              echo "$alias=$path" >> $GITHUB_ENV
+            done
           fi
-
-          echo "Aliases encontrados:"
-          echo "$ALIAS_MAP"
-
-          # Para cada alias encontrado, lo exporta como una variable de entorno
-          echo "$ALIAS_MAP" | while IFS=',' read -r alias path; do
-            echo "$alias=$path" >> $GITHUB_ENV
-          done
 
       # Paso 4: Buscar las referencias a archivos en las sentencias import y cy.fixture
       - name: Buscar referencias en el archivo de prueba
@@ -62,8 +60,12 @@ jobs:
         run: |
           TEST_POSIX="${{ inputs.test_posix }}"
 
+          # Mostrar el contenido del archivo de prueba para depuración
+          echo "Contenido del archivo de prueba:"
+          cat "$TEST_POSIX"
+
           # Buscar todas las sentencias import y cy.fixture en el archivo de prueba
-          FILE_REFERENCES=$(grep -Eo '(import .* from|cy.fixture.*)' "$TEST_POSIX" | grep -Eo '"[^"]+"' | tr -d '"' || echo "")
+          FILE_REFERENCES=$(grep -Eo '(import .* from|cy\.fixture(..*).)' "$TEST_POSIX" | grep -Eo '"[^"]+"' | tr -d '"' || echo "")
 
           # Si no se encuentran referencias, termina el flujo
           if [[ -z "$FILE_REFERENCES" ]]; then
@@ -88,7 +90,8 @@ jobs:
             elif [[ "$file" == cypress/* ]]; then
               RESOLVED_FILES+="$file"$'\n'
             else
-              echo "Ruta no compatible: $file"
+              # Si la ruta no tiene alias, la mantenemos tal cual está
+              RESOLVED_FILES+="$file"$'\n'
             fi
           done <<< "$FILE_REFERENCES"
 
