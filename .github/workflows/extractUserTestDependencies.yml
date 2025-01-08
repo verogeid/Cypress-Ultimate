@@ -1,0 +1,75 @@
+name: Extract Files Used in Test
+
+on:
+  workflow_dispatch:  # Permitir ejecución manual
+    inputs:
+      test_posix:
+        description: "Ruta del archivo de prueba .api.cy.ts"
+        required: true
+        default: "cypress/e2e/Tests/API/Cards/GX3-5811-boardMembers.api.cy.ts"  # Ruta de prueba por defecto
+        type: string
+
+jobs:
+  extract_files:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v2
+
+      - name: Parse ESLint Config and Extract Aliases
+        id: extract-aliases
+        run: |
+          # Parseamos el archivo .eslintrc.json para extraer los alias
+          ALIAS_MAP=$(jq -r '.settings["import/resolver"].alias.map[] | @csv' .eslintrc.json | sed 's/"//g')
+
+          echo "Aliases encontrados:"
+          echo "$ALIAS_MAP"
+
+          # Crear variables de entorno para los alias
+          echo "$ALIAS_MAP" | while IFS=',' read -r alias path; do
+            echo "$alias=$path" >> $GITHUB_ENV
+          done
+
+      - name: Buscar archivos de prueba y resolver alias
+        id: resolve-aliases
+        run: |
+          TEST_POSIX="${{ inputs.test_posix }}"
+          echo "Buscando archivos relacionados con $TEST_POSIX"
+
+          FILE_LIST="files.json"
+
+          # Iterar sobre los alias y buscar archivos en sus rutas
+          while IFS=',' read -r alias path; do
+            if [ -d "$path" ]; then
+              echo "Buscando archivos en $path para alias $alias"
+              find "$path" -type f -name "*.json" >> "$FILE_LIST"
+              find "$path" -type f -name "*.ts" >> "$FILE_LIST"
+            else
+              echo "Ruta no encontrada para alias $alias: $path"
+            fi
+          done <<< "$ALIAS_MAP"
+
+          # Añadir el archivo de prueba a la lista
+          echo "$TEST_POSIX" >> "$FILE_LIST"
+
+          # Validar el contenido del archivo resultante
+          echo "Archivos encontrados:"
+          cat "$FILE_LIST"
+
+      - name: Crear JSON con archivos y hash
+        run: |
+          # Crear JSON con archivos encontrados y hash
+          HASH=$(sha256sum files.json | awk '{ print $1 }')
+          JSON_OUTPUT="files_$HASH.json"
+          jq -n --arg hash "$HASH" --arg files "$(cat files.json)" '{"hash": $hash, "files": $files}' > $JSON_OUTPUT
+
+          # Mostrar el JSON generado
+          echo "Archivo generado: $JSON_OUTPUT"
+          cat $JSON_OUTPUT  # Imprimir el contenido del JSON generado
+
+      - name: Guardar JSON como artefacto
+        uses: actions/upload-artifact@v3
+        with:
+          name: extracted-files
+          path: files_*.json
+
