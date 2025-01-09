@@ -37,12 +37,12 @@ jobs:
             exit 1
           fi
 
-          alias_entries=$(grep -oP '"map":\s*[\K.*?]' "$ESLINT_CONFIG" | awk -F'[][]' '{print $2}')
+          alias_entries=$(grep -oP '"@[^"]+" *: *"[^"]+"' "$ESLINT_CONFIG" || echo "")
           echo "Alias extraídos del archivo .aliases.json: $alias_entries"
-          
-          echo "$alias_entries" | tr -d '\n' | sed 's/},/}\n/g' | while IFS= read -r line; do
+
+          echo "$alias_entries" | while IFS= read -r line; do
             alias_name=$(echo "$line" | grep -oP '"@[^"]+' | tr -d '"')
-            real_path=$(echo "$line" | grep -oP '":\s*"[^"]+' | sed -E 's/^":\s*"//')
+            real_path=$(echo "$line" | grep -oP '":\s*"[^"]+"' | sed -E 's/^":\s*"//')
 
             alias_name_var="ALIAS_${alias_name//\@/_}"
             alias_map["$alias_name_var"]="$real_path"
