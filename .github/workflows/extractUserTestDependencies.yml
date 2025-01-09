@@ -47,7 +47,7 @@ jobs:
             echo "Alias encontrado: $alias_name"
             echo "Ruta real asociada: $real_path"
 
-            alias_name_var="ALIAS_${alias_name//\@/_}"
+            alias_name_var="ALIAS_${alias_name//@/_}"   # Cambio aquí
             echo "Variable de entorno: $alias_name_var"
 
             alias_map["$alias_name_var"]="$real_path"
@@ -92,7 +92,7 @@ jobs:
             echo "Ruta antes de la sustitución: $resolved_path"
             if [[ "$resolved_path" == @* ]]; then
               alias_name=$(echo "$resolved_path" | cut -d'/' -f1)
-              alias_name_var="ALIAS_${alias_name//\@/_}"
+              alias_name_var="ALIAS_${alias_name//@/_}"
               alias_subpath=$(echo "$resolved_path" | sed -E 's|^[^/]+/?||')
 
               echo "Alias encontrado: $alias_name"
