@@ -80,9 +80,9 @@ jobs:
             # Eliminar rutas duplicadas
             RESOLVED_FILES=$(echo "$RESOLVED_FILES" | sort | uniq)
 
-            # Crear JSON con las rutas de los archivos
-            echo "{\"source\":\"$TEST_POSIX\",\"files\":[$(echo "$RESOLVED_FILES" | sed 's/.*/"\1"/g' | paste -sd, -)]}" > resolved_files.json
-            echo "Archivo JSON generado:"
-            cat resolved_files.json
+            # Crear JSON con las rutas de los archivos en memoria
+            JSON_OUTPUT="{\"source\":\"$TEST_POSIX\",\"files\":[$(echo "$RESOLVED_FILES" | sed 's/.*/"\1"/g' | paste -sd, -)]}"
+            echo "JSON generado:"
+            echo "$JSON_OUTPUT"
           fi
 
