@@ -26,30 +26,10 @@ jobs:
           fi
           echo "Archivo de prueba validado: $TEST_POSIX"
 
-      - name: Parse ESLint Config y Extraer Aliases
-        id: extract-aliases
-        run: |
-          if [[ ! -f ".eslintrc.json" ]]; then
-            echo "Archivo .eslintrc.json no encontrado"
-            exit 1
-          fi
-          ALIAS_MAP=$(jq -r '.settings["import/resolver"].alias.map[] | @csv' .eslintrc.json | sed 's/"//g' || echo "")
-          if [[ -z "$ALIAS_MAP" ]]; then
-            echo "No se encontraron alias en .eslintrc.json, continuando sin resolver rutas de alias."
-          else
-            echo "Aliases encontrados:"
-            echo "$ALIAS_MAP"
-            echo "$ALIAS_MAP" | while IFS=',' read -r alias path; do
-              echo "$alias=$path" >> $GITHUB_ENV
-            done
-          fi
-
       - name: Buscar referencias en el archivo de prueba
         id: find-imports
         run: |
           TEST_POSIX="${{ inputs.test_posix }}"
-          #echo "Contenido del archivo de prueba:"
-          #cat "$TEST_POSIX"
           
           # Buscar todas las líneas con 'import' y extraer solo las rutas
           FILE_REFERENCES=$(grep -Eo 'import\s+.*\s+from\s+["'\''][^"'\'' ]+["'\''];' "$TEST_POSIX")
@@ -81,7 +61,8 @@ jobs:
             RESOLVED_FILES=$(echo "$RESOLVED_FILES" | sort | uniq)
 
             # Crear JSON con las rutas de los archivos en memoria
-            JSON_OUTPUT="{\"source\":\"$TEST_POSIX\",\"files\":[$(echo "$RESOLVED_FILES" | sed 's/.*/"\1"/g' | paste -sd, -)]}"
+            # Corregir el formato del JSON para que las rutas estén bien formateadas
+            JSON_OUTPUT="{\"source\":\"$TEST_POSIX\",\"files\":[$(echo "$RESOLVED_FILES" | sed 's/^/"/;s/$/"/' | paste -sd, -)]}"
             echo "JSON generado:"
             echo "$JSON_OUTPUT"
           fi
