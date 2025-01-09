@@ -20,7 +20,6 @@ jobs:
         id: validate-input
         run: |
           TEST_POSIX="${{ inputs.test_posix }}"
-          echo "Valor de TEST_POSIX antes de la validación: $TEST_POSIX"
           if [[ ! -f "$TEST_POSIX" ]]; then
             echo "El archivo especificado no existe: $TEST_POSIX"
             exit 1
@@ -50,11 +49,10 @@ jobs:
             real_path=$(echo "$line" | grep -oP '":\s*"[^"]+"' | sed -E 's/^":\s*"//')
             echo "Valor de 'real_path' después de asignación: $real_path"
 
-            # Verificar valores antes del filtro
             echo "Alias original: $alias_name"
             echo "Ruta real antes del filtro: $real_path"
 
-            alias_name_var="ALIAS_${alias_name//@/_}"  # Cambio aquí
+            alias_name_var="ALIAS_${alias_name//@/}"
             echo "Variable de entorno: $alias_name_var"
 
             alias_map["$alias_name_var"]="$real_path"
@@ -69,48 +67,38 @@ jobs:
 
           echo "Alias exportados correctamente"
 
-      - name: Verificar alias exportados
-        run: |
-          echo "Alias exportados:"
-          printenv | grep ALIAS_
-
       - name: Buscar referencias en el archivo de prueba
         id: find-imports
         run: |
           TEST_POSIX="${{ inputs.test_posix }}"
-          echo "Valor de TEST_POSIX antes de buscar referencias: $TEST_POSIX"
-
+          echo "Ruta del archivo de prueba: $TEST_POSIX"
           FILE_REFERENCES=$(grep -Eo 'import\s+.*\s+from\s+["'"'"'][^"'"'"']+["'"'"'];' "$TEST_POSIX" || echo "")
-          echo "Valor de FILE_REFERENCES después de la asignación: $FILE_REFERENCES"
+          echo "Referencias encontradas: $FILE_REFERENCES"
 
           RESOLVED_FILES=""
-          echo "Valor de RESOLVED_FILES antes del ciclo: $RESOLVED_FILES"
           while IFS= read -r file; do
-            echo "Valor de 'file' antes de la asignación: $file"
+            echo "Procesando archivo: $file"
             path=$(echo "$file" | sed -E 's/.*from\s+["'"'"']([^"'"'"']+)["'"'"'];/\1/')
-            echo "Valor de 'path' después de asignación: $path"
+            echo "Ruta extraída: $path"
 
             if [[ "$path" == .* || "$path" == ..* ]]; then
               resolved_path=$(realpath --relative-to=. "$(dirname "$TEST_POSIX")/$path")
-              echo "Ruta relativa resuelta: $resolved_path"
             elif [[ "$path" == @* ]]; then
               alias_name=$(echo "$path" | cut -d'/' -f1)
-              echo "Valor de alias_name antes de la asignación: $alias_name"
               alias_subpath=$(echo "$path" | sed -E 's|^[^/]+/?||')
-              echo "Valor de alias_subpath después de asignación: $alias_subpath"
               resolved_path="${!alias_name}/$alias_subpath"
-              echo "Ruta de alias resuelta: $resolved_path"
             else
               resolved_path="$path"
-              echo "Ruta sin alias: $resolved_path"
             fi
+
+            echo "Ruta resuelta: $resolved_path"
 
             if [[ "$resolved_path" == cypress/* ]]; then
               RESOLVED_FILES+="$resolved_path"$'\n'
             fi
           done <<< "$FILE_REFERENCES"
-          echo "Valor de RESOLVED_FILES después del ciclo: $RESOLVED_FILES"
 
+          echo "Archivos resueltos: $RESOLVED_FILES"
           JSON_OUTPUT=$(echo "$RESOLVED_FILES" | sort | uniq | jq -Rn --arg source "$TEST_POSIX" '{source: $source, files: [inputs | split("\n") | map(select(length > 0))]}')
           echo "$JSON_OUTPUT" > extracted_files.json
 
