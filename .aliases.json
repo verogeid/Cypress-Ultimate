@@ -1,21 +1,19 @@
-/*{
-  "@pages": "./cypress/support/pages",
-  "@helper": "./cypress/support/helper",
-  "@data": "./cypress/fixtures/data"
-}*/
-[
-  {
-    "key": "@pages",
-    "value": ["./cypress/support/pages"]
-  },
-  {
-    "key": "@helper",
-    "value": ["./cypress/support/helper"]
-  },
-  {
-    "key": "@data",
-    "value": ["./cypress/fixtures/data"]
-  }
-]
-
+{
+  "comment": "Alias configuration for Cypress",
+  "aliases": [
+    {
+      "key": "@pages",
+      "value": ["./cypress/support/pages"]
+    },
+    {
+      "key": "@helper",
+      "value": ["./cypress/support/helper"]
+    },
+    {
+      "key": "@data",
+      "value": ["./cypress/fixtures/data"]
+    }
+  ],
+  "deprecated_code": "/* {\n  \"@pages\": \"./cypress/support/pages\",\n  \"@helper\": \"./cypress/support/helper\",\n  \"@data\": \"./cypress/fixtures/data\"\n} */"
+}
 
