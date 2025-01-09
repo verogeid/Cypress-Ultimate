@@ -67,21 +67,10 @@ jobs:
             fi
           done <<< "$FILE_REFERENCES"
           
-          # Filtrar las líneas vacías directamente en el JSON en memoria
-          RESOLVED_FILES_CLEAN=$(echo "$RESOLVED_FILES" | jq '.files |= map(select(length > 0))')
+          # Filtrar las líneas vacías y crear un JSON
+          RESOLVED_FILES_ARRAY=$(echo "$RESOLVED_FILES" | sed '/^$/d' | awk '{print "\"" $0 "\""}' | paste -sd, -)
+          RESOLVED_FILES_JSON="{\"source\":\"$TEST_POSIX\",\"files\":[$RESOLVED_FILES_ARRAY]}"
 
-          # Mostrar el resultado filtrado en memoria
-          echo "$RESOLVED_FILES_CLEAN"
-
-      - name: Crear JSON con rutas de archivos
-        run: |
-          echo "$RESOLVED_FILES_CLEAN" > resolved_files.json
-          echo "Archivo JSON generado:"
-          cat resolved_files.json
-
-      - name: Guardar JSON como artefacto
-        uses: actions/upload-artifact@v3
-        with:
-          name: resolved-files
-          path: resolved_files.json
+          # Mostrar el JSON generado en memoria
+          echo "$RESOLVED_FILES_JSON"
 
