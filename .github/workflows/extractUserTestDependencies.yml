@@ -6,6 +6,7 @@ on:
       test_file:
         description: 'Ruta del archivo de prueba'
         required: true
+        type: string
         default: 'cypress/e2e/Tests/API/Cards/GX3-5811-boardMembers.api.cy.ts'
 
 jobs:
