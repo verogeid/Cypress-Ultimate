@@ -48,8 +48,8 @@ jobs:
         id: find-imports
         run: |
           TEST_POSIX="${{ inputs.test_posix }}"
-          echo "Contenido del archivo de prueba:"
-          cat "$TEST_POSIX"
+          #echo "Contenido del archivo de prueba:"
+          #cat "$TEST_POSIX"
           
           # Buscar todas las líneas con 'import' y extraer solo las rutas
           FILE_REFERENCES=$(grep -Eo 'import\s+.*\s+from\s+["'\''][^"'\'' ]+["'\''];' "$TEST_POSIX")
