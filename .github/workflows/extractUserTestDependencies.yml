@@ -43,9 +43,9 @@ jobs:
           ALIAS_CONFIG_PATH="./.eslintrc.json"
           declare -A alias_map
 
-          alias_entries=$(jq -r '.settings["import/resolver"].alias.map | to_entries | .[]' "$ALIAS_CONFIG_PATH")
+          alias_entries=$(jq -r '.settings["import/resolver"].alias.map' "$ALIAS_CONFIG_PATH")
           echo "$alias_entries"
-          
+
           while IFS= read -r line; do
             alias_name=$(echo "$line" | jq -r '.key')
             real_path=$(echo "$line" | jq -r '.value[0]')
