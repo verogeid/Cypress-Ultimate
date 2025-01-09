@@ -30,40 +30,24 @@ jobs:
         id: find-imports
         run: |
           TEST_POSIX="${{ inputs.test_posix }}"
-          
-          # Buscar todas las líneas con 'import' y extraer solo las rutas
-          FILE_REFERENCES=$(grep -Eo 'import\s+.*\s+from\s+["'\''][^"'\'' ]+["'\''];' "$TEST_POSIX")
+          echo "Contenido del archivo de prueba:"
+          cat "$TEST_POSIX"
 
-          if [[ -z "$FILE_REFERENCES" ]]; then
-            echo "No se encontraron referencias en el archivo de prueba."
-          else
-            echo "Referencias encontradas:"
-            echo "$FILE_REFERENCES"
+          # Buscar sentencias import que terminan con ;
+          FILE_REFERENCES=$(grep -Eo 'import\s+.*\s+from\s+["'\''][^"'\'' ]+["'\''];' "$TEST_POSIX" || echo "")
 
-            # Inicializar variable para almacenar las rutas de importación
+          # Si se encuentran referencias, procesarlas
+          if [[ -n "$FILE_REFERENCES" ]]; then
             RESOLVED_FILES=""
-
-            # Extraer las rutas de importación
+            # Procesar cada línea que contiene una referencia de importación
             while IFS= read -r file; do
-              if [[ "$file" == @* ]]; then
-                alias=$(echo "$file" | cut -d/ -f1)
-                path=$(echo "$file" | cut -d/ -f2-)
-                real_path=$(eval echo "\$$alias")/$path
-                RESOLVED_FILES+="$real_path"$'\n'
-              elif [[ "$file" == cypress/* ]]; then
-                RESOLVED_FILES+="$file"$'\n'
-              else
-                RESOLVED_FILES+="$file"$'\n'
-              fi
+              # Extraer solo la ruta después de "from"
+              path=$(echo "$file" | sed -E 's/.*from\s+["'\'']([^"'\'']+)["'\''];/\1/')
+              RESOLVED_FILES+="$path"$'\n'
             done <<< "$FILE_REFERENCES"
 
-            # Eliminar rutas duplicadas
-            RESOLVED_FILES=$(echo "$RESOLVED_FILES" | sort | uniq)
-
-            # Crear JSON con las rutas de los archivos en memoria
-            # Corregir el formato del JSON para que las rutas estén bien formateadas
-            JSON_OUTPUT="{\"source\":\"$TEST_POSIX\",\"files\":[$(echo "$RESOLVED_FILES" | sed 's/^/"/;s/$/"/' | paste -sd, -)]}"
-            echo "JSON generado:"
+            # Generar el JSON con las rutas
+            JSON_OUTPUT=$(echo "$RESOLVED_FILES" | sort | uniq | jq -Rn --arg source "$TEST_POSIX" '{source: $source, files: [inputs | split("\n") | map(select(length > 0))]}')
             echo "$JSON_OUTPUT"
           fi
 
