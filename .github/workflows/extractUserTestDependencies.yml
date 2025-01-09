@@ -20,6 +20,7 @@ jobs:
         id: validate-input
         run: |
           TEST_POSIX="${{ inputs.test_posix }}"
+          echo "Valor de TEST_POSIX antes de la validación: $TEST_POSIX"
           if [[ ! -f "$TEST_POSIX" ]]; then
             echo "El archivo especificado no existe: $TEST_POSIX"
             exit 1
@@ -30,6 +31,7 @@ jobs:
         id: extract-aliases
         run: |
           ESLINT_CONFIG="./.aliases.json"
+          echo "Valor de ESLINT_CONFIG: $ESLINT_CONFIG"
           declare -A alias_map
 
           if [[ ! -f "$ESLINT_CONFIG" ]]; then
@@ -41,13 +43,18 @@ jobs:
           echo "Alias extraídos del archivo .aliases.json: $alias_entries"
 
           echo "$alias_entries" | while IFS= read -r line; do
+            echo "Valor de 'line' antes de la asignación: $line"
             alias_name=$(echo "$line" | grep -oP '"@[^"]+' | tr -d '"')
+            echo "Valor de 'alias_name' después de asignación: $alias_name"
+
             real_path=$(echo "$line" | grep -oP '":\s*"[^"]+"' | sed -E 's/^":\s*"//')
+            echo "Valor de 'real_path' después de asignación: $real_path"
 
-            echo "Alias encontrado: $alias_name"
-            echo "Ruta real asociada: $real_path"
+            # Verificar valores antes del filtro
+            echo "Alias original: $alias_name"
+            echo "Ruta real antes del filtro: $real_path"
 
-            alias_name_var="ALIAS_${alias_name//@/_}"   # Cambio aquí
+            alias_name_var="ALIAS_${alias_name//@/_}"  # Cambio aquí
             echo "Variable de entorno: $alias_name_var"
 
             alias_map["$alias_name_var"]="$real_path"
@@ -55,6 +62,8 @@ jobs:
 
           # Exportar alias como variables de entorno utilizando GITHUB_ENV
           for alias in "${!alias_map[@]}"; do
+            echo "Valor de alias antes de exportarlo: $alias"
+            echo "Valor de alias_map[$alias] antes de exportarlo: ${alias_map[$alias]}"
             echo "$alias=${alias_map[$alias]}" >> $GITHUB_ENV
           done
 
@@ -69,63 +78,44 @@ jobs:
         id: find-imports
         run: |
           TEST_POSIX="${{ inputs.test_posix }}"
+          echo "Valor de TEST_POSIX antes de buscar referencias: $TEST_POSIX"
+
           FILE_REFERENCES=$(grep -Eo 'import\s+.*\s+from\s+["'"'"'][^"'"'"']+["'"'"'];' "$TEST_POSIX" || echo "")
-          
-          echo "Referencias encontradas en el archivo de prueba: "
-          echo "$FILE_REFERENCES"
+          echo "Valor de FILE_REFERENCES después de la asignación: $FILE_REFERENCES"
 
-      - name: Limpiar y extraer rutas de los archivos
-        id: clean-file-references
-        run: |
           RESOLVED_FILES=""
+          echo "Valor de RESOLVED_FILES antes del ciclo: $RESOLVED_FILES"
           while IFS= read -r file; do
+            echo "Valor de 'file' antes de la asignación: $file"
             path=$(echo "$file" | sed -E 's/.*from\s+["'"'"']([^"'"'"']+)["'"'"'];/\1/')
-            echo "Ruta extraída: $path"
-            RESOLVED_FILES+="$path"$'\n'
+            echo "Valor de 'path' después de asignación: $path"
+
+            if [[ "$path" == .* || "$path" == ..* ]]; then
+              resolved_path=$(realpath --relative-to=. "$(dirname "$TEST_POSIX")/$path")
+              echo "Ruta relativa resuelta: $resolved_path"
+            elif [[ "$path" == @* ]]; then
+              alias_name=$(echo "$path" | cut -d'/' -f1)
+              echo "Valor de alias_name antes de la asignación: $alias_name"
+              alias_subpath=$(echo "$path" | sed -E 's|^[^/]+/?||')
+              echo "Valor de alias_subpath después de asignación: $alias_subpath"
+              resolved_path="${!alias_name}/$alias_subpath"
+              echo "Ruta de alias resuelta: $resolved_path"
+            else
+              resolved_path="$path"
+              echo "Ruta sin alias: $resolved_path"
+            fi
+
+            if [[ "$resolved_path" == cypress/* ]]; then
+              RESOLVED_FILES+="$resolved_path"$'\n'
+            fi
           done <<< "$FILE_REFERENCES"
+          echo "Valor de RESOLVED_FILES después del ciclo: $RESOLVED_FILES"
 
-      - name: Sustituir alias por rutas reales
-        id: replace-aliases
-        run: |
-          FINAL_RESOLVED_FILES=""
-          while IFS= read -r resolved_path; do
-            echo "Ruta antes de la sustitución: $resolved_path"
-            if [[ "$resolved_path" == @* ]]; then
-              alias_name=$(echo "$resolved_path" | cut -d'/' -f1)
-              alias_name_var="ALIAS_${alias_name//@/_}"
-              alias_subpath=$(echo "$resolved_path" | sed -E 's|^[^/]+/?||')
-
-              echo "Alias encontrado: $alias_name"
-              echo "Variable de entorno del alias: $alias_name_var"
-              echo "Subruta: $alias_subpath"
-
-              resolved_path="${!alias_name_var}/$alias_subpath"
-              echo "Ruta después de sustitución: $resolved_path"
-            fi
-
-            FINAL_RESOLVED_FILES+="$resolved_path"$'\n'
-          done <<< "$RESOLVED_FILES"
-
-      - name: Filtrar solo archivos cypress
-        id: filter-cypress-files
-        run: |
-          CYPRESS_FILES=""
-          while IFS= read -r resolved_file; do
-            if [[ "$resolved_file" == cypress/* ]]; then
-              CYPRESS_FILES+="$resolved_file"$'\n'
-            fi
-          done <<< "$FINAL_RESOLVED_FILES"
-          
-          echo "Archivos cypress filtrados: "
-          echo "$CYPRESS_FILES"
-
-      - name: Generar archivo JSON de resultados
-        id: generate-json
-        run: |
-          JSON_OUTPUT=$(echo "$CYPRESS_FILES" | sort | uniq | jq -Rn --arg source "$TEST_POSIX" '{source: $source, files: [inputs | split("\n") | map(select(length > 0))]}')
+          JSON_OUTPUT=$(echo "$RESOLVED_FILES" | sort | uniq | jq -Rn --arg source "$TEST_POSIX" '{source: $source, files: [inputs | split("\n") | map(select(length > 0))]}')
           echo "$JSON_OUTPUT" > extracted_files.json
 
       - name: Output results
         run: |
           echo "Archivos resueltos:"
           cat extracted_files.json
+
