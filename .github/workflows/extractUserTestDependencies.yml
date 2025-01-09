@@ -26,64 +26,64 @@ jobs:
           fi
           echo "Archivo de prueba validado: $TEST_POSIX"
 
-      - name: Cargar alias desde archivo .aliases.json
-        id: load-aliases
+      - name: Extraer alias desde .eslintrc.json
+        id: extract-aliases
         run: |
-          ALIAS_CONFIG_PATH="./.aliases.json"
+          ESLINT_CONFIG="./.eslintrc.json"
           declare -A alias_map
 
-          if [[ ! -f "$ALIAS_CONFIG_PATH" ]]; then
-            echo "El archivo de alias no existe: $ALIAS_CONFIG_PATH"
+          if [[ ! -f "$ESLINT_CONFIG" ]]; then
+            echo "El archivo de configuración ESLint no existe: $ESLINT_CONFIG"
             exit 1
           fi
 
-          # Leer el archivo y mapear los alias
-          while IFS= read -r line; do
-            # Filtrar solo las líneas que contienen un alias y ruta
-            if [[ "$line" =~ \"([^\"]+)\":\s*\"([^\"]+)\" ]]; then
-              alias_name="${BASH_REMATCH[1]}"
-              real_path="${BASH_REMATCH[2]}"
-              alias_map["$alias_name"]="$real_path"
-            fi
-          done < "$ALIAS_CONFIG_PATH"
+          # Extraer los alias usando grep y awk
+          alias_entries=$(grep -oP '"map":\s*[\K.*?]' "$ESLINT_CONFIG" | awk -F'[][]' '{print $2}')
+          echo "$alias_entries" | tr -d '\n' | sed 's/},/}\n/g' | while IFS= read -r line; do
+            alias_name=$(echo "$line" | grep -oP '"@[^"]+' | tr -d '"')
+            real_path=$(echo "$line" | grep -oP '":\s*"[^"]+' | sed -E 's/^":\s*"//')
+            alias_map["$alias_name"]="$real_path"
+          done
 
-          echo "Alias cargados correctamente"
+          # Exportar alias como variables de entorno
+          for alias in "${!alias_map[@]}"; do
+            echo "$alias=${alias_map[$alias]}" >> $GITHUB_ENV
+          done
+
+          echo "Alias extraídos y exportados correctamente"
 
       - name: Buscar referencias en el archivo de prueba
         id: find-imports
         run: |
           TEST_POSIX="${{ inputs.test_posix }}"
-          
-          FILE_REFERENCES=$(grep -Eo 'import\s+.*\s+from\s+["'\''][^"'\'' ]+["'\''];' "$TEST_POSIX" || echo "")
+          FILE_REFERENCES=$(grep -Eo 'import\s+.*\s+from\s+["'"'"'][^"'"'"']+["'"'"'];' "$TEST_POSIX" || echo "")
 
-          if [[ -n "$FILE_REFERENCES" ]]; then
-            RESOLVED_FILES=""
-            while IFS= read -r file; do
-              path=$(echo "$file" | sed -E 's/.*from\s+["'\'']([^"'\'']+)["'\''];/\1/')
+          RESOLVED_FILES=""
+          while IFS= read -r file; do
+            path=$(echo "$file" | sed -E 's/.*from\s+["'"'"']([^"'"'"']+)["'"'"'];/\1/')
 
-              # Reemplazar alias con la ruta real
-              for alias in "${!alias_map[@]}"; do
-                if [[ "$path" == $alias* ]]; then
-                  path="${path/$alias/${alias_map[$alias]}}"
-                  break
-                fi
-              done
+            if [[ "$path" == .* || "$path" == ..* ]]; then
+              resolved_path=$(realpath --relative-to=. "$(dirname "$TEST_POSIX")/$path")
+            elif [[ "$path" == @* ]]; then
+              alias_name=$(echo "$path" | cut -d'/' -f1)
+              alias_subpath=$(echo "$path" | sed -E 's|^[^/]+/?||')
+              resolved_path="${!alias_name}/$alias_subpath"
+            else
+              resolved_path="$path"
+            fi
 
-              # Procesar rutas relativas
-              if [[ "$path" == ./* ]]; then
-                path="$(dirname "$TEST_POSIX")/$path"
-              elif [[ "$path" == ../* ]]; then
-                path="$(dirname "$TEST_POSIX")/$path"
-              fi
+            if [[ "$resolved_path" == cypress/* ]]; then
+              RESOLVED_FILES+="$resolved_path"$'\n'
+            fi
+          done <<< "$FILE_REFERENCES"
 
-              # Evitar agregar elementos vacíos
-              if [[ -n "$path" ]]; then
-                RESOLVED_FILES+="$path"$'\n'
-              fi
-            done <<< "$FILE_REFERENCES"
+          JSON_OUTPUT=$(echo "$RESOLVED_FILES" | sort | uniq | jq -Rn --arg source "$TEST_POSIX" '{source: $source, files: [inputs | split("\n") | map(select(length > 0))]}')
+          echo "$JSON_OUTPUT" > extracted_files.json
 
-            # Crear el JSON sin el array de arrays
-            JSON_OUTPUT=$(echo "$RESOLVED_FILES" | sort | uniq | jq -Rn --arg source "$TEST_POSIX" '{source: $source, files: [inputs | split("\n") | map(select(length > 0))]}')
-            echo "$JSON_OUTPUT"
-          fi
+      - name: Output results
+        run: |
+          echo "Archivos resueltos:"
+          cat extracted_files.json
+
+Este enfoque utiliza grep y awk para identificar las entradas en la sección de alias de .eslintrc.json, lo que debería resolver los problemas previos con jq.
 
