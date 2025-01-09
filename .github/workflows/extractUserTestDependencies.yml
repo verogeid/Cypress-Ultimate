@@ -63,8 +63,7 @@ jobs:
       - name: Verificar alias exportados
         run: |
           echo "Alias exportados:"
-          # Imprime las variables de entorno con ALIAS_
-          env | grep 'ALIAS_'
+          printenv | grep ALIAS_
 
       - name: Buscar referencias en el archivo de prueba
         id: find-imports
