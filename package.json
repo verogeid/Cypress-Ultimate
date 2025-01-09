@@ -1,9 +1,9 @@
 {
-	"name": "upex-cypress",
-	"version": "4.0.0",
+	"name": "cypress-ultimate",
+	"version": "1.0.0",
 	"description": "Cypress Automation",
 	"main": "index.js",
-	"homepage": "https://github.com/upex-galaxy/cypress-blackhole#readme",
+	"homepage": "https://github.com/verogeid/Cypress-Ultimate#readme",
 	"scripts": {
 		"test": "cypress open",
 		"test:run": "cypress run --browser electron --spec",
@@ -28,9 +28,7 @@
 		"eslint:fix": "npx eslint --fix cypress",
 		"check:ts": "tsc --noEmit"
 	},
-	"keywords": [
-		"upexgalaxy"
-	],
+	"keywords": ["upexgalaxy"],
 	"author": "Uper",
 	"license": "MIT",
 	"type": "module",

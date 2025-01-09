@@ -77,38 +77,38 @@ export default defineConfig({
 				}
 			});
 
-//---- Crear Enlace a Resultados Multimedia -----
+			//---- Crear Enlace a Resultados Multimedia -----
 
-on('after:run', (results: any) => {
-    const repoBaseUrl = 'https://github.com/verogeid/Cypress-Ultimate/blob/main/'; // Cambia 'verogeid' por tu usuario en GitHub
+			on('after:run', (results: any) => {
+				const repoBaseUrl = 'https://github.com/verogeid/Cypress-Ultimate/blob/main/'; // Cambia 'verogeid' por tu usuario en GitHub
 
-    // Asegurémonos de verificar la estructura completa de results
-    console.log(JSON.stringify(results, null, 2)); 
+				// Asegurémonos de verificar la estructura completa de results
+				console.log(JSON.stringify(results, null, 2));
 
-    // Ahora intentamos acceder de manera más segura
-    if (results && Array.isArray(results?.videos)) {
-        results.videos.forEach((video: { name: string; path: string }) => {
-            const videoUrl = `${repoBaseUrl}${video.path.replace('/home/runner/work/Cypress-Ultimate/Cypress-Ultimate/', '')}`;
-            console.log(`Vídeo: ${videoUrl}`);
-        });
-    }
+				// Ahora intentamos acceder de manera más segura
+				if (results && Array.isArray(results?.videos)) {
+					results.videos.forEach((video: { name: string; path: string }) => {
+						const videoUrl = `${repoBaseUrl}${video.path.replace('/home/runner/work/Cypress-Ultimate/Cypress-Ultimate/', '')}`;
+						console.log(`Vídeo: ${videoUrl}`);
+					});
+				}
 
-    if (results && Array.isArray(results?.screenshots)) {
-        results.screenshots.forEach((screenshot: { name: string; path: string }) => {
-            const screenshotUrl = `${repoBaseUrl}${screenshot.path.replace('/home/runner/work/Cypress-Ultimate/Cypress-Ultimate/', '')}`;
-            console.log(`Imagen: ${screenshotUrl}`);
-        });
-    }
-});
+				if (results && Array.isArray(results?.screenshots)) {
+					results.screenshots.forEach((screenshot: { name: string; path: string }) => {
+						const screenshotUrl = `${repoBaseUrl}${screenshot.path.replace('/home/runner/work/Cypress-Ultimate/Cypress-Ultimate/', '')}`;
+						console.log(`Imagen: ${screenshotUrl}`);
+					});
+				}
+			});
 
-//---------------
+			//---------------
 
 			on('before:browser:launch', (browser, launchOptions) => {
 				//? About this Solution:
 				//? When browser Chromium was executing test on demoqa, it was having performance issues with the ads before loading the page
 				//? So we need to add the extension "AdBlock" to the browser Chrome, in order to avoid the ads and improve the performance.
 				if (browser.family === 'chromium' && browser.name !== 'electron') {
-					const pathToExtension = path.join(__dirname, 'cypress/e2e/Tests/AdBlock'); //? path to the extension AdBlock (already downloaded in the project)
+					const pathToExtension = path.join(__dirname, 'extension/adblock'); //? path to the extension AdBlock (already downloaded in the project)
 					if (!fs.existsSync(pathToExtension)) throw new Error(`Cannot find extension at ${pathToExtension}`);
 					launchOptions.args.push(`--disable-extensions-except=${pathToExtension}`);
 					launchOptions.args.push(`--load-extension=${pathToExtension}`);
