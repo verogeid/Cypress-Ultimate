@@ -37,13 +37,15 @@ jobs:
             exit 1
           fi
 
-          # Leer los alias del archivo y mapearlos
-          alias_entries=$(jq -r '.[] | {key: .key, value: .value[0]} | @base64' "$ALIAS_CONFIG_PATH")
+          # Leer el archivo y mapear los alias
           while IFS= read -r line; do
-            alias_name=$(echo "$line" | base64 --decode | jq -r '.key')
-            real_path=$(echo "$line" | base64 --decode | jq -r '.value')
-            alias_map["$alias_name"]="$real_path"
-          done <<< "$alias_entries"
+            # Filtrar solo las líneas que contienen un alias y ruta
+            if [[ "$line" =~ \"([^\"]+)\":\s*\"([^\"]+)\" ]]; then
+              alias_name="${BASH_REMATCH[1]}"
+              real_path="${BASH_REMATCH[2]}"
+              alias_map["$alias_name"]="$real_path"
+            fi
+          done < "$ALIAS_CONFIG_PATH"
 
           echo "Alias cargados correctamente"
 
@@ -51,21 +53,14 @@ jobs:
         id: find-imports
         run: |
           TEST_POSIX="${{ inputs.test_posix }}"
-          # echo "Contenido del archivo de prueba:"
-          # cat "$TEST_POSIX"
-
-          # Buscar sentencias import que terminan con ;
+          
           FILE_REFERENCES=$(grep -Eo 'import\s+.*\s+from\s+["'\''][^"'\'' ]+["'\''];' "$TEST_POSIX" || echo "")
 
-          # Si se encuentran referencias, procesarlas
           if [[ -n "$FILE_REFERENCES" ]]; then
             RESOLVED_FILES=""
-            # Procesar cada línea que contiene una referencia de importación
             while IFS= read -r file; do
-              # Extraer solo la ruta después de "from"
               path=$(echo "$file" | sed -E 's/.*from\s+["'\'']([^"'\'']+)["'\''];/\1/')
 
-              # Sustituir alias por ruta real
               for alias in "${!alias_map[@]}"; do
                 if [[ "$path" == $alias* ]]; then
                   path="${path/$alias/${alias_map[$alias]}}"
@@ -73,7 +68,6 @@ jobs:
                 fi
               done
 
-              # Procesar rutas relativas
               if [[ "$path" == ./* ]]; then
                 path="$(dirname "$TEST_POSIX")/$path"
               elif [[ "$path" == ../* ]]; then
@@ -83,7 +77,6 @@ jobs:
               RESOLVED_FILES+="$path"$'\n'
             done <<< "$FILE_REFERENCES"
 
-            # Generar el JSON con las rutas
             JSON_OUTPUT=$(echo "$RESOLVED_FILES" | sort | uniq | jq -Rn --arg source "$TEST_POSIX" '{source: $source, files: [inputs | split("\n") | map(select(length > 0))]}')
             echo "$JSON_OUTPUT"
           fi
