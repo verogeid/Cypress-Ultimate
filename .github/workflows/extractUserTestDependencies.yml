@@ -129,4 +129,3 @@ jobs:
         run: |
           echo "Archivos resueltos:"
           cat extracted_files.json
-
