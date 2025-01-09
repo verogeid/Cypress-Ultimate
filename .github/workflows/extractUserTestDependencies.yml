@@ -6,7 +6,6 @@ on:
       test_file:
         description: 'Ruta del archivo de prueba'
         required: true
-        type: string
         default: 'cypress/e2e/Tests/API/Cards/GX3-5811-boardMembers.api.cy.ts'
 
 jobs:
@@ -17,7 +16,7 @@ jobs:
     - name: Check out repository
       uses: actions/checkout@v2
 
-    - name: Input: Set the path for the test file
+    - name: Set the path for the test file
       run: |
         TEST_POSIX="${{ github.event.inputs.test_file }}"
         echo "Ruta del archivo de prueba: $TEST_POSIX"
