@@ -1,4 +1,4 @@
-name: Resolve Aliases and Extract File References
+name: Extract File References
 
 on:
   push:
@@ -39,7 +39,7 @@ jobs:
           echo "Alias original: $alias_name"
           echo "Ruta real antes del filtro: $real_path"
 
-          alias_name_var="ALIAS_${alias_name//@/}"   # Cambio aquí: sustituimos @ por vacío
+          alias_name_var="ALIAS_${alias_name//@/}"
           echo "Variable de entorno: $alias_name_var"
 
           alias_map["$alias_name_var"]="$real_path"
@@ -87,4 +87,3 @@ jobs:
         echo "Archivos resueltos: $RESOLVED_FILES"
         JSON_OUTPUT=$(echo "$RESOLVED_FILES" | sort | uniq | jq -Rn --arg source "$TEST_POSIX" '{source: $source, files: [inputs | split("\n") | map(select(length > 0))]}')
         echo "$JSON_OUTPUT" > extracted_files.json
-
