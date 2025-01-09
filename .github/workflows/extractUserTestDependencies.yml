@@ -26,25 +26,26 @@ jobs:
           fi
           echo "Archivo de prueba validado: $TEST_POSIX"
 
+      - name: Cargar alias desde .eslintrc.json
+        id: load-alias
+        run: |
+          ALIAS_CONFIG_PATH="./.eslintrc.json"
+          declare -A alias_map
+
+          alias_entries=$(jq -r '.settings["import/resolver"].alias.map | to_entries | .[]' "$ALIAS_CONFIG_PATH")
+          while IFS= read -r line; do
+            alias_name=$(echo "$line" | jq -r '.key')
+            real_path=$(echo "$line" | jq -r '.value[0]')
+            alias_map["$alias_name"]="$real_path"
+          done <<< "$alias_entries"
+          
+          echo "Alias cargados correctamente"
+
       - name: Buscar referencias en el archivo de prueba
         id: find-imports
         run: |
           TEST_POSIX="${{ inputs.test_posix }}"
           
-          # Ruta al archivo de configuración de alias
-          ALIAS_CONFIG_PATH="./.eslintrc.json"
-
-          # Cargar los alias desde el archivo de configuración (.eslintrc.json)
-          declare -A alias_map
-
-          # Extraer alias y sus rutas desde el archivo .eslintrc.json
-          while IFS= read -r line; do
-            alias_name=$(echo "$line" | jq -r '.key')
-            real_path=$(echo "$line" | jq -r '.value[0]')
-            alias_map["$alias_name"]="$real_path"
-          done < <(jq -r '.settings["import/resolver"].alias.map | to_entries | .[] | {key: .key, value: .value}' "$ALIAS_CONFIG_PATH")
-
-          # Función para resolver alias y rutas relativas
           resolve_path() {
             local path=$1
 
@@ -66,16 +67,11 @@ jobs:
             echo "$path"
           }
 
-          # Buscar sentencias import que terminan con ;
           FILE_REFERENCES=$(grep -Eo 'import\s+.*\s+from\s+["'\''][^"'\'' ]+["'\''];' "$TEST_POSIX" || echo "")
 
-          # Si se encuentran referencias, procesarlas
           if [[ -n "$FILE_REFERENCES" ]]; then
             RESOLVED_FILES=""
-            
-            # Procesar cada línea que contiene una referencia de importación
             while IFS= read -r file; do
-              # Extraer solo la ruta después de "from"
               path=$(echo "$file" | sed -E 's/.*from\s+["'\'']([^"'\'']+)["'\''];/\1/')
               resolved_path=$(resolve_path "$path")
 
@@ -85,7 +81,7 @@ jobs:
               fi
             done <<< "$FILE_REFERENCES"
 
-            # Eliminar líneas vacías de RESOLVED_FILES
+            # Eliminar líneas vacías
             RESOLVED_FILES=$(echo "$RESOLVED_FILES" | grep -v '^\s*$')
 
             # Generar el JSON con las rutas
