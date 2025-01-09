@@ -48,15 +48,11 @@ jobs:
         id: find-imports
         run: |
           TEST_POSIX="${{ inputs.test_posix }}"
-          echo "Contenido del archivo de prueba:"
-          cat "$TEST_POSIX"
           FILE_REFERENCES=$(grep -Eo 'import\s+.*\s+from\s+["'\''][^"'\'' ]+["'\''];' "$TEST_POSIX")
           if [[ -z "$FILE_REFERENCES" ]]; then
             echo "No se encontraron referencias en el archivo de prueba."
             exit 1
           fi
-          echo "Referencias encontradas:"
-          echo "$FILE_REFERENCES"
           RESOLVED_FILES=""
           while IFS= read -r file; do
             if [[ "$file" == @* ]]; then
@@ -70,13 +66,16 @@ jobs:
               RESOLVED_FILES+="$file"$'\n'
             fi
           done <<< "$FILE_REFERENCES"
-          echo "$RESOLVED_FILES" | sort | uniq > resolved_files.txt
-          echo "Rutas resueltas:"
-          cat resolved_files.txt
+          
+          # Filtrar las líneas vacías directamente en el JSON en memoria
+          RESOLVED_FILES_CLEAN=$(echo "$RESOLVED_FILES" | jq '.files |= map(select(length > 0))')
+
+          # Mostrar el resultado filtrado en memoria
+          echo "$RESOLVED_FILES_CLEAN"
 
       - name: Crear JSON con rutas de archivos
         run: |
-          jq -Rn 'inputs | split("\n") | map(select(length > 0)) | {files: .}' < resolved_files.txt > resolved_files.json
+          echo "$RESOLVED_FILES_CLEAN" > resolved_files.json
           echo "Archivo JSON generado:"
           cat resolved_files.json
 
