@@ -52,33 +52,59 @@ jobs:
 
           echo "Alias extraídos y exportados correctamente"
 
+      - name: Verificar alias exportados
+        run: |
+          echo "Alias exportados:"
+          printenv | grep ALIAS_
+
       - name: Buscar referencias en el archivo de prueba
         id: find-imports
         run: |
           TEST_POSIX="${{ inputs.test_posix }}"
           FILE_REFERENCES=$(grep -Eo 'import\s+.*\s+from\s+["'"'"'][^"'"'"']+["'"'"'];' "$TEST_POSIX" || echo "")
 
+          echo "Referencias encontradas en el archivo de prueba:"
+          echo "$FILE_REFERENCES"
+
+      - name: Limpiar y extraer rutas de los archivos
+        id: clean-file-references
+        run: |
           RESOLVED_FILES=""
           while IFS= read -r file; do
             path=$(echo "$file" | sed -E 's/.*from\s+["'"'"']([^"'"'"']+)["'"'"'];/\1/')
-
-            if [[ "$path" == .* || "$path" == ..* ]]; then
-              resolved_path=$(realpath --relative-to=. "$(dirname "$TEST_POSIX")/$path")
-            elif [[ "$path" == @* ]]; then
-              alias_name=$(echo "$path" | cut -d'/' -f1)
-              alias_name_var="ALIAS_${alias_name//\@/_}"
-              alias_subpath=$(echo "$path" | sed -E 's|^[^/]+/?||')
-              resolved_path="${!alias_name_var}/$alias_subpath"
-            else
-              resolved_path="$path"
-            fi
-
-            if [[ "$resolved_path" == cypress/* ]]; then
-              RESOLVED_FILES+="$resolved_path"$'\n'
-            fi
+            echo "Ruta extraída: $path"
+            RESOLVED_FILES+="$path"$'\n'
           done <<< "$FILE_REFERENCES"
 
-          JSON_OUTPUT=$(echo "$RESOLVED_FILES" | sort | uniq | jq -Rn --arg source "$TEST_POSIX" '{source: $source, files: [inputs | split("\n") | map(select(length > 0))]}')
+      - name: Sustituir alias por rutas reales
+        id: replace-aliases
+        run: |
+          FINAL_RESOLVED_FILES=""
+          while IFS= read -r resolved_path; do
+            if [[ "$resolved_path" == @* ]]; then
+              alias_name=$(echo "$resolved_path" | cut -d'/' -f1)
+              alias_name_var="ALIAS_${alias_name//\@/_}"
+              alias_subpath=$(echo "$resolved_path" | sed -E 's|^[^/]+/?||')
+              resolved_path="${!alias_name_var}/$alias_subpath"
+              echo "Alias sustituido: $resolved_path"
+            fi
+            FINAL_RESOLVED_FILES+="$resolved_path"$'\n'
+          done <<< "$RESOLVED_FILES"
+
+      - name: Filtrar solo archivos cypress
+        id: filter-cypress-files
+        run: |
+          CYPRESS_FILES=""
+          while IFS= read -r resolved_file; do
+            if [[ "$resolved_file" == cypress/* ]]; then
+              CYPRESS_FILES+="$resolved_file"$'\n'
+            fi
+          done <<< "$FINAL_RESOLVED_FILES"
+
+      - name: Generar archivo JSON de resultados
+        id: generate-json
+        run: |
+          JSON_OUTPUT=$(echo "$CYPRESS_FILES" | sort | uniq | jq -Rn --arg source "$TEST_POSIX" '{source: $source, files: [inputs | split("\n") | map(select(length > 0))]}')
           echo "$JSON_OUTPUT" > extracted_files.json
 
       - name: Output results
