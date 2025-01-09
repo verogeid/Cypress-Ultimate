@@ -1,9 +1,12 @@
 name: Extract File References
 
 on:
-  push:
-    branches:
-      - main
+  workflow_dispatch:
+    inputs:
+      test_file:
+        description: 'Ruta del archivo de prueba'
+        required: true
+        default: 'cypress/e2e/Tests/API/Cards/GX3-5811-boardMembers.api.cy.ts'
 
 jobs:
   resolve-aliases:
@@ -12,6 +15,11 @@ jobs:
     steps:
     - name: Check out repository
       uses: actions/checkout@v2
+
+    - name: Input: Set the path for the test file
+      run: |
+        TEST_POSIX="${{ github.event.inputs.test_file }}"
+        echo "Ruta del archivo de prueba: $TEST_POSIX"
 
     - name: Extract and resolve alias paths
       run: |
@@ -56,8 +64,6 @@ jobs:
 
     - name: Extract file references and resolve paths
       run: |
-        TEST_POSIX="cypress/e2e/Tests/API/Cards/GX3-5811-boardMembers.api.cy.ts"
-        echo "Ruta del archivo de prueba: $TEST_POSIX"
         FILE_REFERENCES=$(grep -Eo 'import\s+.*\s+from\s+["'"'"'][^"'"'"']+["'"'"'];' "$TEST_POSIX" || echo "")
         echo "Referencias encontradas: $FILE_REFERENCES"
 
@@ -87,3 +93,4 @@ jobs:
         echo "Archivos resueltos: $RESOLVED_FILES"
         JSON_OUTPUT=$(echo "$RESOLVED_FILES" | sort | uniq | jq -Rn --arg source "$TEST_POSIX" '{source: $source, files: [inputs | split("\n") | map(select(length > 0))]}')
         echo "$JSON_OUTPUT" > extracted_files.json
+
