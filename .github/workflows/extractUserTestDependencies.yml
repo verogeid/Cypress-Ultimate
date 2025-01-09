@@ -26,14 +26,14 @@ jobs:
           fi
           echo "Archivo de prueba validado: $TEST_POSIX"
 
-      - name: Extraer alias desde .eslintrc.json
+      - name: Extraer alias desde .aliases.json
         id: extract-aliases
         run: |
-          ESLINT_CONFIG="./.eslintrc.json"
+          ESLINT_CONFIG="./.aliases.json"
           declare -A alias_map
 
           if [[ ! -f "$ESLINT_CONFIG" ]]; then
-            echo "El archivo de configuración ESLint no existe: $ESLINT_CONFIG"
+            echo "El archivo de configuración de alias no existe: $ESLINT_CONFIG"
             exit 1
           fi
 
@@ -84,6 +84,3 @@ jobs:
         run: |
           echo "Archivos resueltos:"
           cat extracted_files.json
-
-Este enfoque utiliza grep y awk para identificar las entradas en la sección de alias de .eslintrc.json, lo que debería resolver los problemas previos con jq.
-
