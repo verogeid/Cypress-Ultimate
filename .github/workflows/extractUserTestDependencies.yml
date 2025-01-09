@@ -26,6 +26,17 @@ jobs:
           fi
           echo "Archivo de prueba validado: $TEST_POSIX"
 
+      - name: Verificar si el archivo .eslintrc.json existe
+        run: |
+          if [ ! -f "./.eslintrc.json" ]; then
+            echo ".eslintrc.json no se encuentra en la raíz del repositorio"
+            exit 1
+          fi
+
+      - name: Ver contenido del archivo .eslintrc.json
+        run: |
+          cat .eslintrc.json
+
       - name: Cargar alias desde .eslintrc.json
         id: load-alias
         run: |
@@ -33,6 +44,8 @@ jobs:
           declare -A alias_map
 
           alias_entries=$(jq -r '.settings["import/resolver"].alias.map | to_entries | .[]' "$ALIAS_CONFIG_PATH")
+          echo "$alias_entries"
+          
           while IFS= read -r line; do
             alias_name=$(echo "$line" | jq -r '.key')
             real_path=$(echo "$line" | jq -r '.value[0]')
@@ -49,7 +62,6 @@ jobs:
           resolve_path() {
             local path=$1
 
-            # Resolver alias
             for alias_name in "${!alias_map[@]}"; do
               if [[ "$path" == $alias_name* ]]; then
                 path="${alias_map[$alias_name]}${path#$alias_name}"
@@ -57,7 +69,6 @@ jobs:
               fi
             done
 
-            # Resolver rutas relativas (./, ../)
             if [[ "$path" == ./.* ]]; then
               path="./$(realpath --relative-to="$(pwd)" "$path")"
             elif [[ "$path" == ../* ]]; then
@@ -75,16 +86,13 @@ jobs:
               path=$(echo "$file" | sed -E 's/.*from\s+["'\'']([^"'\'']+)["'\''];/\1/')
               resolved_path=$(resolve_path "$path")
 
-              # Filtrar solo rutas dentro de la carpeta cypress/
               if [[ "$resolved_path" == cypress/* ]]; then
                 RESOLVED_FILES+="$resolved_path"$'\n'
               fi
             done <<< "$FILE_REFERENCES"
 
-            # Eliminar líneas vacías
             RESOLVED_FILES=$(echo "$RESOLVED_FILES" | grep -v '^\s*$')
 
-            # Generar el JSON con las rutas
             JSON_OUTPUT=$(echo "$RESOLVED_FILES" | sort | uniq | jq -Rn --arg source "$TEST_POSIX" '{source: $source, files: [inputs | split("\n")[] | select(length > 0)]}')
             echo "$JSON_OUTPUT"
           fi
