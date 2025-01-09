@@ -27,10 +27,21 @@ jobs:
           echo "Archivo de prueba encontrado: $TEST_POSIX"
         fi
 
-    - name: Show the contents of the test file (First few lines)
+    - name: Mostrar las primeras 10 líneas del archivo de prueba
       run: |
+        echo "Comprobando ruta del archivo de prueba: $TEST_POSIX"
+        if [ -z "$TEST_POSIX" ]; then
+          echo "La variable TEST_POSIX está vacía. No se puede mostrar el archivo."
+          exit 1
+        fi
+
         echo "Mostrando las primeras 10 líneas del archivo de prueba $TEST_POSIX:"
-        head -n 10 "$TEST_POSIX"
+        if [ -f "$TEST_POSIX" ]; then
+          head -n 10 "$TEST_POSIX"
+        else
+          echo "El archivo no existe en la ruta especificada: $TEST_POSIX"
+          exit 1
+        fi
 
     - name: Extract and resolve alias paths
       run: |
@@ -47,28 +58,36 @@ jobs:
         echo "Alias extraídos del archivo .aliases.json: $alias_entries"
 
         echo "$alias_entries" | while IFS= read -r line; do
+          echo "Valor de 'line' antes de la asignación: $line"
           alias_name=$(echo "$line" | grep -oP '"@[^"]+' | tr -d '"')
+          echo "Valor de 'alias_name' después de asignación: $alias_name"
+
           real_path=$(echo "$line" | grep -oP '":\s*"[^"]+"' | sed -E 's/^":\s*"//')
+          echo "Valor de 'real_path' después de asignación: $real_path"
+
+          # Verificar valores antes del filtro
+          echo "Alias original: $alias_name"
+          echo "Ruta real antes del filtro: $real_path"
+
           alias_name_var="ALIAS_${alias_name//@/}"
+          echo "Variable de entorno: $alias_name_var"
+
           alias_map["$alias_name_var"]="$real_path"
         done
 
         # Exportar alias como variables de entorno utilizando GITHUB_ENV
         for alias in "${!alias_map[@]}"; do
+          echo "Valor de alias antes de exportarlo: $alias"
+          echo "Valor de alias_map[$alias] antes de exportarlo: ${alias_map[$alias]}"
           echo "$alias=${alias_map[$alias]}" >> $GITHUB_ENV
         done
+
         echo "Alias exportados correctamente"
 
     - name: Extract file references and resolve paths
       run: |
-        echo "Buscando importaciones en el archivo $TEST_POSIX"
         FILE_REFERENCES=$(grep -Eo 'import\s+.*\s+from\s+["'"'"'][^"'"'"']+["'"'"'];' "$TEST_POSIX" || echo "")
         echo "Referencias encontradas: $FILE_REFERENCES"
-
-        if [ -z "$FILE_REFERENCES" ]; then
-          echo "No se encontraron referencias de importación en el archivo."
-          exit 1
-        fi
 
         RESOLVED_FILES=""
         while IFS= read -r file; do
