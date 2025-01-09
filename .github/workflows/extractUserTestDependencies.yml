@@ -1,3 +1,5 @@
+Aquí está el workflow sin guardar archivos ni artefactos:
+
 name: Extract Files Used in Test
 
 on:
@@ -48,29 +50,38 @@ jobs:
         id: find-imports
         run: |
           TEST_POSIX="${{ inputs.test_posix }}"
-          FILE_REFERENCES=$(grep -Eo 'import\s+.*\s+from\s+["'\''][^"'\'' ]+["'\''];' "$TEST_POSIX")
+          echo "Contenido del archivo de prueba:"
+          cat "$TEST_POSIX"
+          
+          # Buscar todas las líneas con 'import' y extraer solo las rutas
+          FILE_REFERENCES=$(grep -Eo 'import\s+.*\s+from\s+["'\''][^"'\'' ]+["'\''];' "$TEST_POSIX" || echo "")
+          
           if [[ -z "$FILE_REFERENCES" ]]; then
             echo "No se encontraron referencias en el archivo de prueba."
             exit 1
           fi
-          RESOLVED_FILES=""
-          while IFS= read -r file; do
-            if [[ "$file" == @* ]]; then
-              alias=$(echo "$file" | cut -d/ -f1)
-              path=$(echo "$file" | cut -d/ -f2-)
-              real_path=$(eval echo "\$$alias")/$path
-              RESOLVED_FILES+="$real_path"$'\n'
-            elif [[ "$file" == cypress/* ]]; then
-              RESOLVED_FILES+="$file"$'\n'
-            else
-              RESOLVED_FILES+="$file"$'\n'
-            fi
+          
+          echo "Referencias encontradas:"
+          echo "$FILE_REFERENCES"
+
+          # Inicializar variable para almacenar las rutas de importación
+          IMPORT_PATHS=""
+          
+          # Extraer solo las rutas de importación y almacenarlas
+          while IFS= read -r line; do
+            # Usamos una expresión regular para extraer la ruta después de 'from'
+            path=$(echo "$line" | sed -E 's/.*from\s+["'\''"]([^"'\''"]+)["'\''"].*/\1/')
+            IMPORT_PATHS+="$path"$'\n'
           done <<< "$FILE_REFERENCES"
           
-          # Filtrar las líneas vacías y crear un JSON
-          RESOLVED_FILES_ARRAY=$(echo "$RESOLVED_FILES" | sed '/^$/d' | awk '{print "\"" $0 "\""}' | paste -sd, -)
-          RESOLVED_FILES_JSON="{\"source\":\"$TEST_POSIX\",\"files\":[$RESOLVED_FILES_ARRAY]}"
+          echo "Rutas de importación:"
+          echo "$IMPORT_PATHS"
+          
+          # Limpiar las rutas duplicadas y eliminar líneas vacías
+          CLEAN_PATHS=$(echo "$IMPORT_PATHS" | sort | uniq | sed '/^$/d')
 
-          # Mostrar el JSON generado en memoria
-          echo "$RESOLVED_FILES_JSON"
+          # Generar el JSON con las rutas de importación
+          echo '{"source":"'"$TEST_POSIX"'","files":['
+          echo "$CLEAN_PATHS" | sed 's/^/"/;s/$/"/' | paste -sd, -
+          echo ']}'
 
