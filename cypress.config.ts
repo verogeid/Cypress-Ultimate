@@ -29,7 +29,7 @@ if (!orangePassword || !orangeUsername) {
 }
 
 const trelloToken = process.env.TRELLO_TOKEN;
-const trelloKey = process.env.TRELLO_TOKEN;
+const trelloKey = process.env.TRELLO_KEY;
 if (!trelloToken || !trelloKey) {
 	new Error('MISSING CREDENTIALS: TRELLO KEY OR TOKEN');
 }
