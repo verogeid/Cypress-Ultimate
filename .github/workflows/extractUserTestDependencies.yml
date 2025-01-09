@@ -20,28 +20,6 @@ jobs:
       run: |
         TEST_POSIX="${{ github.event.inputs.test_file }}"
         echo "Ruta del archivo de prueba: $TEST_POSIX"
-        if [ ! -f "$TEST_POSIX" ]; then
-          echo "No se encontró el archivo de prueba en la ruta especificada: $TEST_POSIX"
-          exit 1
-        else
-          echo "Archivo de prueba encontrado: $TEST_POSIX"
-        fi
-
-    - name: Mostrar las primeras 10 líneas del archivo de prueba
-      run: |
-        echo "Comprobando ruta del archivo de prueba: $TEST_POSIX"
-        if [ -z "$TEST_POSIX" ]; then
-          echo "La variable TEST_POSIX está vacía. No se puede mostrar el archivo."
-          exit 1
-        fi
-
-        echo "Mostrando las primeras 10 líneas del archivo de prueba $TEST_POSIX:"
-        if [ -f "$TEST_POSIX" ]; then
-          head -n 10 "$TEST_POSIX"
-        else
-          echo "El archivo no existe en la ruta especificada: $TEST_POSIX"
-          exit 1
-        fi
 
     - name: Extract and resolve alias paths
       run: |
@@ -65,20 +43,13 @@ jobs:
           real_path=$(echo "$line" | grep -oP '":\s*"[^"]+"' | sed -E 's/^":\s*"//')
           echo "Valor de 'real_path' después de asignación: $real_path"
 
-          # Verificar valores antes del filtro
-          echo "Alias original: $alias_name"
-          echo "Ruta real antes del filtro: $real_path"
-
           alias_name_var="ALIAS_${alias_name//@/}"
           echo "Variable de entorno: $alias_name_var"
 
           alias_map["$alias_name_var"]="$real_path"
         done
 
-        # Exportar alias como variables de entorno utilizando GITHUB_ENV
         for alias in "${!alias_map[@]}"; do
-          echo "Valor de alias antes de exportarlo: $alias"
-          echo "Valor de alias_map[$alias] antes de exportarlo: ${alias_map[$alias]}"
           echo "$alias=${alias_map[$alias]}" >> $GITHUB_ENV
         done
 
@@ -86,6 +57,9 @@ jobs:
 
     - name: Extract file references and resolve paths
       run: |
+        TEST_POSIX="${{ github.event.inputs.test_file }}"
+        echo "Ruta del archivo de prueba a procesar: $TEST_POSIX"
+
         FILE_REFERENCES=$(grep -Eo 'import\s+.*\s+from\s+["'"'"'][^"'"'"']+["'"'"'];' "$TEST_POSIX" || echo "")
         echo "Referencias encontradas: $FILE_REFERENCES"
 
