@@ -38,6 +38,8 @@ jobs:
           fi
 
           alias_entries=$(grep -oP '"map":\s*[\K.*?]' "$ESLINT_CONFIG" | awk -F'[][]' '{print $2}')
+          echo "Alias extraídos del archivo .aliases.json: $alias_entries"
+          
           echo "$alias_entries" | tr -d '\n' | sed 's/},/}\n/g' | while IFS= read -r line; do
             alias_name=$(echo "$line" | grep -oP '"@[^"]+' | tr -d '"')
             real_path=$(echo "$line" | grep -oP '":\s*"[^"]+' | sed -E 's/^":\s*"//')
@@ -50,7 +52,7 @@ jobs:
             echo "$alias=${alias_map[$alias]}" >> $GITHUB_ENV
           done
 
-          echo "Alias extraídos y exportados correctamente"
+          echo "Alias exportados correctamente"
 
       - name: Verificar alias exportados
         run: |
@@ -62,8 +64,8 @@ jobs:
         run: |
           TEST_POSIX="${{ inputs.test_posix }}"
           FILE_REFERENCES=$(grep -Eo 'import\s+.*\s+from\s+["'"'"'][^"'"'"']+["'"'"'];' "$TEST_POSIX" || echo "")
-
-          echo "Referencias encontradas en el archivo de prueba:"
+          
+          echo "Referencias encontradas en el archivo de prueba: "
           echo "$FILE_REFERENCES"
 
       - name: Limpiar y extraer rutas de los archivos
@@ -100,6 +102,9 @@ jobs:
               CYPRESS_FILES+="$resolved_file"$'\n'
             fi
           done <<< "$FINAL_RESOLVED_FILES"
+          
+          echo "Archivos cypress filtrados: "
+          echo "$CYPRESS_FILES"
 
       - name: Generar archivo JSON de resultados
         id: generate-json
