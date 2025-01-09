@@ -61,6 +61,7 @@ jobs:
             while IFS= read -r file; do
               path=$(echo "$file" | sed -E 's/.*from\s+["'\'']([^"'\'']+)["'\''];/\1/')
 
+              # Reemplazar alias con la ruta real
               for alias in "${!alias_map[@]}"; do
                 if [[ "$path" == $alias* ]]; then
                   path="${path/$alias/${alias_map[$alias]}}"
@@ -68,15 +69,20 @@ jobs:
                 fi
               done
 
+              # Procesar rutas relativas
               if [[ "$path" == ./* ]]; then
                 path="$(dirname "$TEST_POSIX")/$path"
               elif [[ "$path" == ../* ]]; then
                 path="$(dirname "$TEST_POSIX")/$path"
               fi
 
-              RESOLVED_FILES+="$path"$'\n'
+              # Evitar agregar elementos vacíos
+              if [[ -n "$path" ]]; then
+                RESOLVED_FILES+="$path"$'\n'
+              fi
             done <<< "$FILE_REFERENCES"
 
+            # Crear el JSON sin el array de arrays
             JSON_OUTPUT=$(echo "$RESOLVED_FILES" | sort | uniq | jq -Rn --arg source "$TEST_POSIX" '{source: $source, files: [inputs | split("\n") | map(select(length > 0))]}')
             echo "$JSON_OUTPUT"
           fi
