@@ -9,84 +9,74 @@ on:
         default: 'cypress/e2e/Tests/API/Cards/GX3-5811-boardMembers.api.cy.ts'
 
 jobs:
-  resolve-aliases:
+  extract-references:
     runs-on: ubuntu-latest
 
     steps:
     - name: Check out repository
       uses: actions/checkout@v2
 
-    - name: Set the path for the test file
+    - name: Step 1 - Extract import statements
       run: |
-        TEST_POSIX="${{ github.event.inputs.test_file }}"
-        echo "Ruta del archivo de prueba: $TEST_POSIX"
+        FILE_REFERENCES=$(grep -Eo 'import\s+.*\s+from\s+["'"'"'][^"'"'"']+["'"'"'];' "${{ github.event.inputs.test_file }}" || echo "")
+        echo "Referencias encontradas:"
+        echo "$FILE_REFERENCES"
 
-    - name: Extract and resolve alias paths
+    - name: Step 2 - Process each import line
       run: |
-        ESLINT_CONFIG="./.aliases.json"
-        echo "Valor de ESLINT_CONFIG: $ESLINT_CONFIG"
-        declare -A alias_map
-
-        if [[ ! -f "$ESLINT_CONFIG" ]]; then
-          echo "El archivo de configuración de alias no existe: $ESLINT_CONFIG"
-          exit 1
-        fi
-
-        alias_entries=$(grep -oP '"@[^"]+" *: *"[^"]+"' "$ESLINT_CONFIG" || echo "")
-        echo "Alias extraídos del archivo .aliases.json: $alias_entries"
-
-        echo "$alias_entries" | while IFS= read -r line; do
-          echo "Valor de 'line' antes de la asignación: $line"
-          alias_name=$(echo "$line" | grep -oP '"@[^"]+' | tr -d '"')
-          echo "Valor de 'alias_name' después de asignación: $alias_name"
-
-          real_path=$(echo "$line" | grep -oP '":\s*"[^"]+"' | sed -E 's/^":\s*"//')
-          echo "Valor de 'real_path' después de asignación: $real_path"
-
-          alias_name_var="ALIAS_${alias_name//@/}"
-          echo "Variable de entorno: $alias_name_var"
-
-          alias_map["$alias_name_var"]="$real_path"
-        done
-
-        for alias in "${!alias_map[@]}"; do
-          echo "$alias=${alias_map[$alias]}" >> $GITHUB_ENV
-        done
-
-        echo "Alias exportados correctamente"
-
-    - name: Extract file references and resolve paths
-      run: |
-        TEST_POSIX="${{ github.event.inputs.test_file }}"
-        echo "Ruta del archivo de prueba a procesar: $TEST_POSIX"
-
-        FILE_REFERENCES=$(grep -Eo 'import\s+.*\s+from\s+["'"'"'][^"'"'"']+["'"'"'];' "$TEST_POSIX" || echo "")
-        echo "Referencias encontradas: $FILE_REFERENCES"
-
-        RESOLVED_FILES=""
+        FILE_REFERENCES=$(grep -Eo 'import\s+.*\s+from\s+["'"'"'][^"'"'"']+["'"'"'];' "${{ github.event.inputs.test_file }}" || echo "")
         while IFS= read -r file; do
-          echo "Procesando archivo: $file"
+          echo "Procesando línea de import: $file"
+        done <<< "$FILE_REFERENCES"
+        echo "Líneas procesadas."
+
+    - name: Step 3 - Extract paths from import statements
+      run: |
+        FILE_REFERENCES=$(grep -Eo 'import\s+.*\s+from\s+["'"'"'][^"'"'"']+["'"'"'];' "${{ github.event.inputs.test_file }}" || echo "")
+        while IFS= read -r file; do
           path=$(echo "$file" | sed -E 's/.*from\s+["'"'"']([^"'"'"']+)["'"'"'];/\1/')
           echo "Ruta extraída: $path"
+        done <<< "$FILE_REFERENCES"
+        echo "Rutas extraídas correctamente."
 
+    - name: Step 4 - Resolve relative paths
+      run: |
+        FILE_REFERENCES=$(grep -Eo 'import\s+.*\s+from\s+["'"'"'][^"'"'"']+["'"'"'];' "${{ github.event.inputs.test_file }}" || echo "")
+        while IFS= read -r file; do
+          path=$(echo "$file" | sed -E 's/.*from\s+["'"'"']([^"'"'"']+)["'"'"'];/\1/')
           if [[ "$path" == .* || "$path" == ..* ]]; then
-            resolved_path=$(realpath --relative-to=. "$(dirname "$TEST_POSIX")/$path")
-          elif [[ "$path" == @* ]]; then
-            alias_name=$(echo "$path" | cut -d'/' -f1)
-            alias_subpath=$(echo "$path" | sed -E 's|^[^/]+/?||')
-            resolved_path="${!alias_name}/$alias_subpath"
-          else
-            resolved_path="$path"
-          fi
-
-          echo "Ruta resuelta: $resolved_path"
-
-          if [[ "$resolved_path" == cypress/* ]]; then
-            RESOLVED_FILES+="$resolved_path"$'\n'
+            resolved_path=$(realpath --relative-to=. "$(dirname "${{ github.event.inputs.test_file }}")/$path")
+            echo "Ruta resuelta (relativa): $resolved_path"
           fi
         done <<< "$FILE_REFERENCES"
+        echo "Rutas relativas resueltas."
 
-        echo "Archivos resueltos: $RESOLVED_FILES"
-        JSON_OUTPUT=$(echo "$RESOLVED_FILES" | sort | uniq | jq -Rn --arg source "$TEST_POSIX" '{source: $source, files: [inputs | split("\n") | map(select(length > 0))]}')
-        echo "$JSON_OUTPUT" #> extracted_files.json
+    - name: Step 5 - Resolve alias paths
+      run: |
+        FILE_REFERENCES=$(grep -Eo 'import\s+.*\s+from\s+["'"'"'][^"'"'"']+["'"'"'];' "${{ github.event.inputs.test_file }}" || echo "")
+        while IFS= read -r file; do
+          path=$(echo "$file" | sed -E 's/.*from\s+["'"'"']([^"'"'"']+)["'"'"'];/\1/')
+          if [[ "$path" == @* ]]; then
+            alias_name=$(echo "$path" | cut -d'/' -f1)
+            alias_subpath=$(echo "$path" | sed -E 's|^[^/]+/?||')
+            alias_var_name="ALIAS_${alias_name//@/}"
+            resolved_path="${!alias_var_name}/$alias_subpath"
+            echo "Ruta resuelta (alias): $resolved_path"
+          fi
+        done <<< "$FILE_REFERENCES"
+        echo "Rutas de alias resueltas."
+
+    - name: Step 6 - Filter and display relevant files
+      run: |
+        FILE_REFERENCES=$(grep -Eo 'import\s+.*\s+from\s+["'"'"'][^"'"'"']+["'"'"'];' "${{ github.event.inputs.test_file }}" || echo "")
+        RESOLVED_FILES=""
+        while IFS= read -r file; do
+          path=$(echo "$file" | sed -E 's/.*from\s+["'"'"']([^"'"'"']+)["'"'"'];/\1/')
+          if [[ "$path" == cypress/* ]]; then
+            RESOLVED_FILES+="$path"$'\n'
+            echo "Archivo relevante encontrado: $path"
+          fi
+        done <<< "$FILE_REFERENCES"
+        echo "Archivos relevantes finales:"
+        echo "$RESOLVED_FILES"
 
