@@ -30,9 +30,6 @@ jobs:
         id: find-imports
         run: |
           TEST_POSIX="${{ inputs.test_posix }}"
-          # echo "Contenido del archivo de prueba:"
-          # cat "$TEST_POSIX"
-
           # Buscar sentencias import que terminan con ;
           FILE_REFERENCES=$(grep -Eo 'import\s+.*\s+from\s+["'\''][^"'\'' ]+["'\''];' "$TEST_POSIX" || echo "")
 
@@ -45,6 +42,9 @@ jobs:
               path=$(echo "$file" | sed -E 's/.*from\s+["'\'']([^"'\'']+)["'\''];/\1/')
               RESOLVED_FILES+="$path"$'\n'
             done <<< "$FILE_REFERENCES"
+
+            # Eliminar líneas vacías de RESOLVED_FILES
+            RESOLVED_FILES=$(echo "$RESOLVED_FILES" | grep -v '^\s*$')
 
             # Generar el JSON con las rutas
             JSON_OUTPUT=$(echo "$RESOLVED_FILES" | sort | uniq | jq -Rn --arg source "$TEST_POSIX" '{source: $source, files: [inputs | split("\n") | map(select(length > 0))]}')
