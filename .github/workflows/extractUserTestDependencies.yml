@@ -44,10 +44,16 @@ jobs:
             alias_name=$(echo "$line" | grep -oP '"@[^"]+' | tr -d '"')
             real_path=$(echo "$line" | grep -oP '":\s*"[^"]+"' | sed -E 's/^":\s*"//')
 
+            echo "Alias encontrado: $alias_name"
+            echo "Ruta real asociada: $real_path"
+
             alias_name_var="ALIAS_${alias_name//\@/_}"
+            echo "Variable de entorno: $alias_name_var"
+
             alias_map["$alias_name_var"]="$real_path"
           done
 
+          # Exportar alias como variables de entorno utilizando GITHUB_ENV
           for alias in "${!alias_map[@]}"; do
             echo "$alias=${alias_map[$alias]}" >> $GITHUB_ENV
           done
@@ -57,7 +63,8 @@ jobs:
       - name: Verificar alias exportados
         run: |
           echo "Alias exportados:"
-          printenv | grep ALIAS_
+          # Imprime las variables de entorno con ALIAS_
+          env | grep 'ALIAS_'
 
       - name: Buscar referencias en el archivo de prueba
         id: find-imports
@@ -83,13 +90,20 @@ jobs:
         run: |
           FINAL_RESOLVED_FILES=""
           while IFS= read -r resolved_path; do
+            echo "Ruta antes de la sustitución: $resolved_path"
             if [[ "$resolved_path" == @* ]]; then
               alias_name=$(echo "$resolved_path" | cut -d'/' -f1)
               alias_name_var="ALIAS_${alias_name//\@/_}"
               alias_subpath=$(echo "$resolved_path" | sed -E 's|^[^/]+/?||')
+
+              echo "Alias encontrado: $alias_name"
+              echo "Variable de entorno del alias: $alias_name_var"
+              echo "Subruta: $alias_subpath"
+
               resolved_path="${!alias_name_var}/$alias_subpath"
-              echo "Alias sustituido: $resolved_path"
+              echo "Ruta después de sustitución: $resolved_path"
             fi
+
             FINAL_RESOLVED_FILES+="$resolved_path"$'\n'
           done <<< "$RESOLVED_FILES"
 
