@@ -55,6 +55,9 @@ jobs:
             echo "Ruta resuelta (alias): $resolved_path"
           fi
 
+          # Eliminar './' al principio de la ruta, si existe
+          resolved_path="${resolved_path#./}"
+
           # Filtrar y mostrar solo las rutas relevantes
           if [[ "$resolved_path" == cypress/* ]]; then
             echo "Archivo relevante encontrado: $resolved_path"
