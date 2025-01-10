@@ -55,14 +55,25 @@ jobs:
             echo "Ruta resuelta (alias): $resolved_path"
           fi
 
+          # Mostrar guiones antes de eliminar './'
+          echo "--------- Antes de eliminar './'"
+
           # Eliminar './' al principio de la ruta, si existe
           resolved_path="${resolved_path#./}"
+
+          # Mostrar guiones después de la eliminación
+          echo "--------- Después de eliminar './'"
 
           # Filtrar y mostrar solo las rutas relevantes
           if [[ "$resolved_path" == cypress/* ]]; then
             echo "Archivo relevante encontrado: $resolved_path"
             RESOLVED_FILES+="$resolved_path"$'\n'
           fi
+
+          # Mostrar resolved_files dentro del bucle
+          echo "Contenido de resolved_files dentro del bucle:"
+          echo "$RESOLVED_FILES"
+          
         done <<< "$FILE_REFERENCES"
         echo "Archivos relevantes finales:"
         echo "$RESOLVED_FILES"
