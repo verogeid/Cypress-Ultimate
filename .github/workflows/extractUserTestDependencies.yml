@@ -50,24 +50,25 @@ jobs:
             alias_subpath=$(echo "$path" | sed -E 's|^[^/]+/?||')
             alias_base=$(grep -o "\"$alias_name\"[[:space:]]*:[[:space:]]*\"[^\"]*\"" .aliases.json | awk -F ': ' '{print $2}' | tr -d '"')
             resolved_path="${alias_base}/$alias_subpath"
+            echo ""
             echo "Ruta resuelta (alias): $resolved_path"
           fi
-          # Mostrar guiones antes de eliminar './'
-          echo "--------- Antes de eliminar './'"
           # Eliminar './' al principio de la ruta, si existe
           resolved_path="${resolved_path#./}"
           # Mostrar guiones después de la eliminación
-          echo "--------- Después de eliminar './'"
+          echo "---------"
           # Filtrar y mostrar solo las rutas relevantes
           if [[ "$resolved_path" == cypress/* ]]; then
             echo "Archivo relevante encontrado: $resolved_path"
             RESOLVED_FILES+="$resolved_path"$'\n'
           fi
           # Mostrar resolved_files dentro del bucle
-          echo "Contenido de resolved_files dentro del bucle:"
+          echo ""
+          echo "Resolved_files acumulado:"
           echo "$RESOLVED_FILES"
           
         done <<< "$FILE_REFERENCES"
+        echo ""
         echo "Archivos relevantes finales:"
         echo "$RESOLVED_FILES"
     - name: Show resolved files content
