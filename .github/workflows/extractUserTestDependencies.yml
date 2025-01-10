@@ -59,12 +59,14 @@ jobs:
           # Filtrar y mostrar solo las rutas relevantes
           if [[ "$resolved_path" == cypress/* ]]; then
             echo "Archivo relevante encontrado: $resolved_path"
-            RESOLVED_FILES+="$resolved_path"$'\n'
+         
           fi
-          # Mostrar resolved_files dentro del bucle
+         
           echo ""
           echo "Resolved_files acumulado:"
-          echo "$RESOLVED_FILES"
+     
+          echo "$resolved_path" >> resolved_files.txt
+
           echo "---------"
         done <<< "$FILE_REFERENCES"
         echo ""
