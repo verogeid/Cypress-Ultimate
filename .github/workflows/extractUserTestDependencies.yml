@@ -16,67 +16,62 @@ jobs:
     - name: Check out repository
       uses: actions/checkout@v2
 
-    - name: Step 1 - Extract import statements
+    - name: Step 1 - Read aliases from .aliases.json
+      run: |
+        echo "Leyendo los alias desde .aliases.json"
+        ALIAS_JSON=$(cat .aliases.json)
+        echo "$ALIAS_JSON" | grep -o '"@[^"]*":\s*"[^"]*"' | awk -F ': ' '{print $1, $2}' > alias_list.txt
+        echo "Alias leídos y almacenados en alias_list.txt"
+        
+    - name: Show alias list content
+      run: |
+        echo "Contenido de alias_list.txt:"
+        cat alias_list.txt
+
+    - name: Step 2 - Extract import statements
       run: |
         FILE_REFERENCES=$(grep -Eo 'import\s+.*\s+from\s+["'"'"'][^"'"'"']+["'"'"'];' "${{ github.event.inputs.test_file }}" || echo "")
         echo "Referencias encontradas:"
         echo "$FILE_REFERENCES"
 
-    - name: Step 2 - Process each import line
-      run: |
-        FILE_REFERENCES=$(grep -Eo 'import\s+.*\s+from\s+["'"'"'][^"'"'"']+["'"'"'];' "${{ github.event.inputs.test_file }}" || echo "")
-        while IFS= read -r file; do
-          echo "Procesando línea de import: $file"
-        done <<< "$FILE_REFERENCES"
-        echo "Líneas procesadas."
-
-    - name: Step 3 - Extract paths from import statements
+    - name: Step 3 - Process and resolve paths from import statements
       run: |
         FILE_REFERENCES=$(grep -Eo 'import\s+.*\s+from\s+["'"'"'][^"'"'"']+["'"'"'];' "${{ github.event.inputs.test_file }}" || echo "")
         while IFS= read -r file; do
           path=$(echo "$file" | sed -E 's/.*from\s+["'"'"']([^"'"'"']+)["'"'"'];/\1/')
-          echo "Ruta extraída: $path"
-        done <<< "$FILE_REFERENCES"
-        echo "Rutas extraídas correctamente."
-
-    - name: Step 4 - Resolve relative paths
-      run: |
-        FILE_REFERENCES=$(grep -Eo 'import\s+.*\s+from\s+["'"'"'][^"'"'"']+["'"'"'];' "${{ github.event.inputs.test_file }}" || echo "")
-        while IFS= read -r file; do
-          path=$(echo "$file" | sed -E 's/.*from\s+["'"'"']([^"'"'"']+)["'"'"'];/\1/')
+          
+          # Resolver rutas relativas
           if [[ "$path" == .* || "$path" == ..* ]]; then
             resolved_path=$(realpath --relative-to=. "$(dirname "${{ github.event.inputs.test_file }}")/$path")
             echo "Ruta resuelta (relativa): $resolved_path"
           fi
-        done <<< "$FILE_REFERENCES"
-        echo "Rutas relativas resueltas."
-
-    - name: Step 5 - Resolve alias paths
-      run: |
-        FILE_REFERENCES=$(grep -Eo 'import\s+.*\s+from\s+["'"'"'][^"'"'"']+["'"'"'];' "${{ github.event.inputs.test_file }}" || echo "")
-        while IFS= read -r file; do
-          path=$(echo "$file" | sed -E 's/.*from\s+["'"'"']([^"'"'"']+)["'"'"'];/\1/')
+          
+          # Resolver alias
           if [[ "$path" == @* ]]; then
             alias_name=$(echo "$path" | cut -d'/' -f1)
             alias_subpath=$(echo "$path" | sed -E 's|^[^/]+/?||')
-            alias_var_name="ALIAS_${alias_name//@/}"
-            resolved_path="${!alias_var_name}/$alias_subpath"
+            alias_base=$(grep -o "\"$alias_name\"[[:space:]]*:[[:space:]]*\"[^\"]*\"" .aliases.json | awk -F ': ' '{print $2}' | tr -d '"')
+            resolved_path="${alias_base}/$alias_subpath"
             echo "Ruta resuelta (alias): $resolved_path"
           fi
-        done <<< "$FILE_REFERENCES"
-        echo "Rutas de alias resueltas."
 
-    - name: Step 6 - Filter and display relevant files
-      run: |
-        FILE_REFERENCES=$(grep -Eo 'import\s+.*\s+from\s+["'"'"'][^"'"'"']+["'"'"'];' "${{ github.event.inputs.test_file }}" || echo "")
-        RESOLVED_FILES=""
-        while IFS= read -r file; do
-          path=$(echo "$file" | sed -E 's/.*from\s+["'"'"']([^"'"'"']+)["'"'"'];/\1/')
-          if [[ "$path" == cypress/* ]]; then
-            RESOLVED_FILES+="$path"$'\n'
-            echo "Archivo relevante encontrado: $path"
+          # Filtrar y mostrar solo las rutas relevantes
+          if [[ "$resolved_path" == cypress/* ]]; then
+            echo "Archivo relevante encontrado: $resolved_path"
+            RESOLVED_FILES+="$resolved_path"$'\n'
           fi
         done <<< "$FILE_REFERENCES"
         echo "Archivos relevantes finales:"
         echo "$RESOLVED_FILES"
+
+    - name: Show resolved files content
+      run: |
+        echo "Contenido de resolved_files.txt:"
+        echo "$RESOLVED_FILES" > resolved_files.txt
+        cat resolved_files.txt
+
+    - name: Step 4 - Save final results to a file
+      run: |
+        echo "$RESOLVED_FILES" > resolved_files.txt
+        echo "Rutas relevantes guardadas en resolved_files.txt"
 
