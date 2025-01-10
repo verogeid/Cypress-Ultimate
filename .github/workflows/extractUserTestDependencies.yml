@@ -13,7 +13,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       RESOLVED_FILES: ""  # Variable para las rutas resueltas
-      ALIAS_LIST: ""  # Variable para los alias
 
     steps:
     - name: Check out repository
@@ -23,15 +22,13 @@ jobs:
       run: |
         echo "Leyendo los alias desde .aliases.json"
         ALIAS_JSON=$(cat .aliases.json)
-        # Añadir los alias a la variable ALIAS_LIST
-        ALIAS_LIST=$(echo "$ALIAS_JSON" | grep -o '"@[^"]*":\s*"[^"]*"' | awk -F ': ' '{print $1, $2}' | tr '\n' ' ' )
-        echo "Alias leídos y almacenados en ALIAS_LIST"
-        echo "ALIAS_LIST=${ALIAS_LIST}" >> $GITHUB_ENV  # Guardar en la variable de entorno
+        echo "$ALIAS_JSON" | grep -o '"@[^"]*":\s*"[^"]*"' | awk -F ': ' '{print $1, $2}' > alias_list.txt
+        echo "Alias leídos y almacenados en alias_list.txt"
 
     - name: Show alias list content
       run: |
-        echo "Contenido de ALIAS_LIST:"
-        echo "${{ env.ALIAS_LIST }}"
+        echo "Contenido de alias_list.txt:"
+        cat alias_list.txt
 
     - name: Step 2 - Extract import statements
       run: |
@@ -49,14 +46,13 @@ jobs:
           if [[ "$path" == .* || "$path" == ..* ]]; then
             resolved_path=$(realpath --relative-to=. "$(dirname "${{ github.event.inputs.test_file }}")/$path")
             echo "Ruta resuelta (relativa): $resolved_path"
-            echo "$resolved_path"  # Mostrar rutas relativas
           fi
           
-          # Resolver alias
+          # Resolver alias usando alias_list.txt
           if [[ "$path" == @* ]]; then
             alias_name=$(echo "$path" | cut -d'/' -f1)
             alias_subpath=$(echo "$path" | sed -E 's|^[^/]+/?||')
-            alias_base=$(echo "${{ env.ALIAS_LIST }}" | grep -o "\"$alias_name\"[[:space:]]*:[[:space:]]*\"[^\"]*\"" | awk -F ': ' '{print $2}' | tr -d '"')
+            alias_base=$(grep -o "\"$alias_name\"[[:space:]]*:[[:space:]]*\"[^\"]*\"" alias_list.txt | awk -F ': ' '{print $2}' | tr -d '"')
             resolved_path="${alias_base}/$alias_subpath"
             echo "Ruta resuelta (alias): $resolved_path"
           fi
@@ -78,7 +74,7 @@ jobs:
 
           # Mostrar resolved_files dentro del bucle
           echo "Contenido de RESOLVED_FILES dentro del bucle:"
-          echo "${{ env.RESOLVED_FILES }}"
+          echo ""
 
         done <<< "$FILE_REFERENCES"
         
