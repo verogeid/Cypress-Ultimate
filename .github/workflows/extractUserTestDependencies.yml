@@ -37,7 +37,7 @@ jobs:
     - name: Step 3 - Process and resolve paths from import statements
       run: |
         FILE_REFERENCES=$(grep -Eo 'import\s+.*\s+from\s+["'"'][^"'"']+["'""];' "${{ github.event.inputs.test_file }}" || echo "")
-        RESOLVED_FILES=""
+        > resolved_files.txt  # Limpiar el archivo antes de escribir
         while IFS= read -r file; do
           path=$(echo "$file" | sed -E 's/.*from\s+["'"']([^"'"']+)["'"'];/\1/')
           
@@ -67,19 +67,18 @@ jobs:
           # Filtrar y mostrar solo las rutas relevantes
           if [[ "$resolved_path" == cypress/* ]]; then
             echo "Archivo relevante encontrado: $resolved_path"
-            # Guardar en la variable de archivos resueltos
-            RESOLVED_FILES="${RESOLVED_FILES}$resolved_path"$'\n'
+            # Guardar en el archivo de salida
+            echo "$resolved_path" >> resolved_files.txt
           fi
 
-          # Mostrar resolved_files dentro del bucle
-          echo "Contenido de RESOLVED_FILES dentro del bucle:"
-          echo "$RESOLVED_FILES"
+          # Mostrar contenido del archivo de salida dentro del bucle
+          echo "Contenido de resolved_files.txt dentro del bucle:"
+          cat resolved_files.txt
 
         done <<< "$FILE_REFERENCES"
 
-    - name: Save resolved files to a text file
+    - name: Show resolved files
       run: |
-        echo "Guardando archivos resueltos en resolved_files.txt"
-        echo "$RESOLVED_FILES" > resolved_files.txt
+        echo "Contenido final de resolved_files.txt:"
         cat resolved_files.txt
 
