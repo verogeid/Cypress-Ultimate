@@ -28,14 +28,14 @@ jobs:
         echo "Contenido de alias_list.txt:"
         cat alias_list.txt
 
-    - name: Step 2 - Process and resolve paths from import statements
+    - name: Step 2 - Initialize resolved files with posix path
       run: |
         RESOLVED_FILES="cypress/e2e/Tests/API/Cards/GX3-5811-boardMembers.api.cy.ts"
         echo "Ruta posix inicial: $RESOLVED_FILES"
-        
-        # Crear el archivo de salida
         echo "$RESOLVED_FILES" > resolved_files.txt
-        
+
+    - name: Step 3 - Process and resolve paths from import statements
+      run: |
         function process_file() {
           local file=$1
           echo "Procesando archivo: $file"
@@ -80,7 +80,7 @@ jobs:
 
         # Iniciar el proceso con el archivo inicial
         process_file "cypress/e2e/Tests/API/Cards/GX3-5811-boardMembers.api.cy.ts"
-        
+
         echo "Archivos relevantes finales:"
         cat resolved_files.txt
 
