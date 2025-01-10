@@ -27,10 +27,10 @@ jobs:
       run: |
         echo "Contenido de alias_list.txt:"
         cat alias_list.txt
-        echo ""
 
     - name: Step 2 - Extract import statements
       run: |
+        echo "Leyendo las referencias de importación desde el archivo: ${{ github.event.inputs.test_file }}"
         FILE_REFERENCES=$(grep -Eo 'import\s+.*\s+from\s+["'"'"'][^"'"'"']+["'"'"'];' "${{ github.event.inputs.test_file }}" || echo "")
         echo "Referencias encontradas:"
         echo "$FILE_REFERENCES"
@@ -38,6 +38,7 @@ jobs:
 
     - name: Step 3 - Process and resolve paths from import statements
       run: |
+        echo "Iniciando la resolución de rutas..."
         FILE_REFERENCES=$(grep -Eo 'import\s+.*\s+from\s+["'"'"'][^"'"'"']+["'"'"'];' "${{ github.event.inputs.test_file }}" || echo "")
         > resolved_files.txt
         echo "Ruta de entrada: ${{ github.event.inputs.test_file }}" >> resolved_files.txt
@@ -45,18 +46,18 @@ jobs:
         # Inicializar archivo temporal
         > temp_resolved_files.txt
         echo "Inicializando archivo temporal: temp_resolved_files.txt"
-        echo ""
 
+        # Bucle iterativo en lugar de recursivo
         while true; do
           # Leer el archivo temporal
           current_file=$(head -n 1 temp_resolved_files.txt)
           if [[ -z "$current_file" ]]; then
             break
           fi
-          
+
           # Limpiar archivo temporal
           > temp_resolved_files.txt
-          
+
           # Leer las referencias del archivo actual
           FILE_REFERENCES=$(grep -Eo 'import\s+.*\s+from\s+["'"'"'][^"'"'"']+["'"'"'];' "$current_file" || echo "")
           echo "Referencias encontradas en el archivo $current_file:"
@@ -65,32 +66,38 @@ jobs:
 
           while IFS= read -r file; do
             path=$(echo "$file" | sed -E 's/.*from\s+["'"'"']([^"'"'"']+)["'"'"'];/\1/')
-            
+            echo "Ruta de referencia encontrada: $path"
+
             # Resolver rutas relativas
             if [[ "$path" == .* || "$path" == ..* ]]; then
               resolved_path=$(realpath --relative-to=. "$(dirname "$current_file")/$path")
+              echo "Ruta resuelta (relativa): $resolved_path"
             fi
-            
+
             # Resolver alias
             if [[ "$path" == @* ]]; then
               alias_name=$(echo "$path" | cut -d'/' -f1)
               alias_subpath=$(echo "$path" | sed -E 's|^[^/]+/?||')
               alias_base=$(grep -o "\"$alias_name\"[[:space:]]*:[[:space:]]*\"[^\"]*\"" .aliases.json | awk -F ': ' '{print $2}' | tr -d '"')
               resolved_path="${alias_base}/$alias_subpath"
+              echo "Ruta resuelta (alias): $resolved_path"
             fi
-            
+
             # Añadir extensión .js o .ts si falta
             if [[ "$resolved_path" != *.js && "$resolved_path" != *.ts ]]; then
               if [[ -f "${resolved_path}.js" ]]; then
                 resolved_path="${resolved_path}.js"
+                echo "Añadiendo extensión .js"
               elif [[ -f "${resolved_path}.ts" ]]; then
                 resolved_path="${resolved_path}.ts"
+                echo "Añadiendo extensión .ts"
               fi
             fi
-            
+
             # Eliminar './' al principio de la ruta, si existe
             resolved_path="${resolved_path#./}"
-            
+            echo "Ruta final procesada: $resolved_path"
+
             # Filtrar y mostrar solo las rutas relevantes
             if [[ "$resolved_path" == cypress/* ]]; then
               echo "Archivo relevante encontrado: $resolved_path"
@@ -98,17 +105,11 @@ jobs:
               echo "$resolved_path" >> temp_resolved_files.txt
             fi
           done <<< "$FILE_REFERENCES"
-          
+
           # Si no se encontraron nuevas rutas, salir
           if ! grep -q . temp_resolved_files.txt; then
             break
           fi
-          
-          # Mostrar el contenido del archivo temporal después de cada iteración
-          echo "Contenido de temp_resolved_files.txt después de esta iteración:"
-          cat temp_resolved_files.txt
-          echo ""
-
         done
 
         echo "Contenido final de resolved_files.txt:"
