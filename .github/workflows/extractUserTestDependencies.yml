@@ -27,24 +27,26 @@ jobs:
       run: |
         echo "Contenido de alias_list.txt:"
         cat alias_list.txt
+        echo ""
 
     - name: Step 2 - Extract import statements
       run: |
         FILE_REFERENCES=$(grep -Eo 'import\s+.*\s+from\s+["'"'"'][^"'"'"']+["'"'"'];' "${{ github.event.inputs.test_file }}" || echo "")
         echo "Referencias encontradas:"
         echo "$FILE_REFERENCES"
+        echo ""
 
     - name: Step 3 - Process and resolve paths from import statements
       run: |
         FILE_REFERENCES=$(grep -Eo 'import\s+.*\s+from\s+["'"'"'][^"'"'"']+["'"'"'];' "${{ github.event.inputs.test_file }}" || echo "")
         > resolved_files.txt
-        # Incluir la ruta de entrada como la primera línea del archivo
-        echo "${{ github.event.inputs.test_file }}" >> resolved_files.txt
-        
+        echo "Ruta de entrada: ${{ github.event.inputs.test_file }}" >> resolved_files.txt
+
         # Inicializar archivo temporal
         > temp_resolved_files.txt
-        
-        # Bucle iterativo en lugar de recursivo
+        echo "Inicializando archivo temporal: temp_resolved_files.txt"
+        echo ""
+
         while true; do
           # Leer el archivo temporal
           current_file=$(head -n 1 temp_resolved_files.txt)
@@ -59,7 +61,8 @@ jobs:
           FILE_REFERENCES=$(grep -Eo 'import\s+.*\s+from\s+["'"'"'][^"'"'"']+["'"'"'];' "$current_file" || echo "")
           echo "Referencias encontradas en el archivo $current_file:"
           echo "$FILE_REFERENCES"
-          
+          echo ""
+
           while IFS= read -r file; do
             path=$(echo "$file" | sed -E 's/.*from\s+["'"'"']([^"'"'"']+)["'"'"'];/\1/')
             
@@ -100,13 +103,21 @@ jobs:
           if ! grep -q . temp_resolved_files.txt; then
             break
           fi
+          
+          # Mostrar el contenido del archivo temporal después de cada iteración
+          echo "Contenido de temp_resolved_files.txt después de esta iteración:"
+          cat temp_resolved_files.txt
+          echo ""
+
         done
-        
-        echo "Archivos relevantes finales:"
+
+        echo "Contenido final de resolved_files.txt:"
         cat resolved_files.txt
+        echo ""
 
     - name: Show resolved files content
       run: |
-        echo "Contenido de resolved_files.txt:"
+        echo "Contenido de resolved_files.txt final:"
         cat resolved_files.txt
+        echo ""
 
