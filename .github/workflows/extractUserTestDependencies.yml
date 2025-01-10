@@ -37,55 +37,62 @@ jobs:
     - name: Step 3 - Process and resolve paths from import statements
       run: |
         FILE_REFERENCES=$(grep -Eo 'import\s+.*\s+from\s+["'"'"'][^"'"'"']+["'"'"'];' "${{ github.event.inputs.test_file }}" || echo "")
-        > resolved_files.txt
-        # Incluir la ruta de entrada como la primera línea del archivo
-        echo "${{ github.event.inputs.test_file }}" >> resolved_files.txt
-
-        while IFS= read -r file; do
-          path=$(echo "$file" | sed -E 's/.*from\s+["'"'"']([^"'"'"']+)["'"'"'];/\1/')
-          
-          # Resolver rutas relativas
-          if [[ "$path" == .* || "$path" == ..* ]]; then
-            resolved_path=$(realpath --relative-to=. "$(dirname "${{ github.event.inputs.test_file }}")/$path")
-          fi
-          
-          # Resolver alias
-          if [[ "$path" == @* ]]; then
-            alias_name=$(echo "$path" | cut -d'/' -f1)
-            alias_subpath=$(echo "$path" | sed -E 's|^[^/]+/?||')
-            alias_base=$(grep -o "\"$alias_name\"[[:space:]]*:[[:space:]]*\"[^\"]*\"" .aliases.json | awk -F ': ' '{print $2}' | tr -d '"')
-            resolved_path="${alias_base}/$alias_subpath"
-          fi
-          
-          # Añadir extensión .js o .ts si falta
-          if [[ "$resolved_path" != *.js && "$resolved_path" != *.ts ]]; then
-            if [[ -f "${resolved_path}.js" ]]; then
-              resolved_path="${resolved_path}.js"
-            elif [[ -f "${resolved_path}.ts" ]]; then
-              resolved_path="${resolved_path}.ts"
+        RESOLVED_FILES="${{ github.event.inputs.test_file }}"
+        echo "Ruta posix inicial: $RESOLVED_FILES"
+        
+        # Función recursiva para procesar archivos
+        function process_file() {
+          local file=$1
+          echo "Procesando archivo: $file"
+          FILE_REFERENCES=$(grep -Eo 'import\s+.*\s+from\s+["'"'"'][^"'"'"']+["'"'"']' "$file" || echo "")
+          while IFS= read -r reference; do
+            path=$(echo "$reference" | sed -E 's/.*from\s+["'"'"']([^"'"'"']+)["'"'"'];/\1/')
+            
+            # Resolver rutas relativas
+            if [[ "$path" == .* || "$path" == ..* ]]; then
+              resolved_path=$(realpath --relative-to=. "$(dirname "$file")/$path")
+              echo "Ruta resuelta (relativa): $resolved_path"
             fi
-          fi
-          
-          # Añadir línea vacía tras la ruta resuelta
-          echo ""
+            
+            # Resolver alias
+            if [[ "$path" == @* ]]; then
+              alias_name=$(echo "$path" | cut -d'/' -f1)
+              alias_subpath=$(echo "$path" | sed -E 's|^[^/]+/?||')
+              alias_base=$(grep -o "\"$alias_name\"[[:space:]]*:[[:space:]]*\"[^\"]*\"" alias_list.txt | awk -F ': ' '{print $2}' | tr -d '"')
+              resolved_path="${alias_base}/$alias_subpath"
+              echo "Ruta resuelta (alias): $resolved_path"
+            fi
+            
+            # Eliminar './' al principio de la ruta, si existe
+            resolved_path="${resolved_path#./}"
+            echo ""
+            
+            # Filtrar y mostrar solo las rutas relevantes
+            if [[ "$resolved_path" == cypress/* ]]; then
+              echo "Archivo relevante encontrado: $resolved_path"
+              RESOLVED_FILES+="$resolved_path"$'\n'
+              
+              # Llamar a la función recursiva para procesar archivos referenciados
+              process_file "$resolved_path"
+            fi
+            echo "---------"
+          done <<< "$FILE_REFERENCES"
+        }
 
-          # Eliminar './' al principio de la ruta, si existe
-          resolved_path="${resolved_path#./}"
-
-          # Filtrar y mostrar solo las rutas relevantes
-          if [[ "$resolved_path" == cypress/* ]]; then
-            echo "Archivo relevante encontrado: $resolved_path"
-            echo "$resolved_path" >> resolved_files.txt
-          fi
-          
-          # Añadir delimitador al final de la iteración
-          echo "--------"
-        done <<< "$FILE_REFERENCES"
+        # Iniciar el proceso con el archivo inicial
+        process_file "${{ github.event.inputs.test_file }}"
         echo "Archivos relevantes finales:"
-        cat resolved_files.txt
+        echo "$RESOLVED_FILES"
 
     - name: Show resolved files content
       run: |
-        echo "Contenido de resolved_files.txt:"
+        echo "Contenido de RESOLVED_FILES:"
+        echo "$RESOLVED_FILES"
+        echo "$RESOLVED_FILES" > resolved_files.txt
         cat resolved_files.txt
+
+    - name: Step 4 - Save final results to a file
+      run: |
+        echo "$RESOLVED_FILES" > resolved_files.txt
+        echo "Rutas relevantes guardadas en resolved_files.txt"
 
