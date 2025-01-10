@@ -69,7 +69,8 @@ jobs:
 
     - name: Show resolved files content
       run: |
-        echo "Contenido de resolved_files.txt:"
+        echo "Contenido de RESOLVED_FILES:"
+        echo "$RESOLVED_FILES"
         echo "$RESOLVED_FILES" > resolved_files.txt
         cat resolved_files.txt
 
