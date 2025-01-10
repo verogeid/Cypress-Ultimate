@@ -33,7 +33,7 @@ jobs:
         FILE_REFERENCES=$(grep -Eo 'import\s+.*\s+from\s+["'"'"'][^"'"'"']+["'"'"'];' "${{ github.event.inputs.test_file }}" || echo "")
         
         ##### Buscar referencias de cy.fixture
-        FIXTURE_REFERENCES=$(grep -Eo 'cy\.fixture_["'"'][^"'"']+["'"']_.' "${{ github.event.inputs.test_file }}" || echo "")
+        FIXTURE_REFERENCES=$(grep -Eo 'cy\.fixture(.["'"'][^"'"']+["'"'])..' "${{ github.event.inputs.test_file }}" || echo "")
         
         echo "Referencias encontradas:"
         echo "$FILE_REFERENCES"
@@ -102,7 +102,7 @@ jobs:
           # Procesar cy.fixture
           while IFS= read -r fixture; do
             # Buscar la ruta de cy.fixture
-            path=$(echo "$fixture" | sed -E 's/cy\.fixture_["'"']([^"'"']+)["'"']_.\1/')
+            path=$(echo "$fixture" | sed -E 's/cy\.fixture(.["'"']([^"'"']+)["'"'])..\1/')
             resolved_path="$path"
             echo "Ruta de cy.fixture: $resolved_path"
             if [[ "$resolved_path" == cypress/* ]]; then
