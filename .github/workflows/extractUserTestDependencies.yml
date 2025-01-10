@@ -22,103 +22,80 @@ jobs:
         ALIAS_JSON=$(cat .aliases.json)
         echo "$ALIAS_JSON" | grep -o '"@[^"]*":\s*"[^"]*"' | awk -F ': ' '{print $1, $2}' > alias_list.txt
         echo "Alias leídos y almacenados en alias_list.txt"
-        echo ""
-        echo "Contenido inicial de alias_list.txt:"
+        
+    - name: Show alias list content
+      run: |
+        echo "Contenido de alias_list.txt:"
         cat alias_list.txt
-        echo ""
 
-    - name: Step 2 - Extract import statements
+    - name: Step 2 - Extract import and cy.fixture statements
       run: |
         echo "Leyendo las referencias de importación desde el archivo: ${{ github.event.inputs.test_file }}"
-        FILE_REFERENCES=$(grep -Eo 'import\s+.*\s+from\s+["'"'"'][^"'"'"']+["'"'"'];' "${{ github.event.inputs.test_file }}" || echo "")
+        FILE_REFERENCES=$(grep -Eo 'import\s+.*\s+from\s+["'"'][^"'"']+["'"'];' "${{ github.event.inputs.test_file }}" || echo "")
+        
+        ##### Buscar referencias de cy.fixture
+        FIXTURE_REFERENCES=$(grep -Eo 'cy\.fixture(.["'"'][^"'"']+["'"']).' "${{ github.event.inputs.test_file }}" || echo "")
+        
         echo "Referencias encontradas:"
         echo "$FILE_REFERENCES"
+        echo "$FIXTURE_REFERENCES"
         echo ""
 
-    - name: Step 3 - Process and resolve paths iteratively
+    - name: Step 3 - Process and resolve paths from import and cy.fixture
       run: |
         echo "Iniciando la resolución de rutas..."
-        > resolved_files.txt
-        > temp_resolved_files.txt
-
-        # Añadir la ruta inicial al archivo resolved_files.txt
-        echo "Ruta de entrada: ${{ github.event.inputs.test_file }}" >> resolved_files.txt
-        echo "${{ github.event.inputs.test_file }}" >> temp_resolved_files.txt
-
-        while true; do
-          # Leer el primer archivo de temp_resolved_files.txt
-          current_file=$(head -n 1 temp_resolved_files.txt)
-          if [[ -z "$current_file" ]]; then
-            echo "No hay más archivos que procesar, saliendo..."
-            break
+        echo "Inicializando archivo temporal: temp_resolved_files.txt"
+        RESOLVED_FILES=""
+        TEMP_FILES=""
+        
+        # Procesar importaciones
+        while IFS= read -r file; do
+          path=$(echo "$file" | sed -E 's/.*from\s+["'"']([^"'"']+)["'"'];/\1/')
+          
+          # Resolver rutas relativas
+          if [[ "$path" == .* || "$path" == ..* ]]; then
+            resolved_path=$(realpath --relative-to=. "$(dirname "${{ github.event.inputs.test_file }}")/$path")
+            echo "Ruta resuelta (relativa): $resolved_path"
+          fi
+          
+          # Resolver alias
+          if [[ "$path" == @* ]]; then
+            alias_name=$(echo "$path" | cut -d'/' -f1)
+            alias_subpath=$(echo "$path" | sed -E 's|^[^/]+/?||')
+            alias_base=$(grep -o '"$alias_name"[[:space:]]*:[[:space:]]*"[^"]*"' .aliases.json | awk -F ': ' '{print $2}' | tr -d '"')
+            resolved_path="${alias_base}/$alias_subpath"
+            echo "Ruta resuelta (alias): $resolved_path"
           fi
 
-          echo "Leyendo archivo actual: $current_file"
+          # Agregar la ruta al archivo temporal
+          TEMP_FILES+="$resolved_path"$'\n'
+        done <<< "$FILE_REFERENCES"
+        
+        # Procesar cy.fixture
+        while IFS= read -r fixture; do
+          ##### Buscar la ruta de cy.fixture
+          path=$(echo "$fixture" | sed -E 's/cy\.fixture(.["'"']([^"'"']+)["'"'])./\1/')
+          resolved_path="$path"
+          echo "Ruta de cy.fixture: $resolved_path"
           
-          # Eliminar el archivo leído de temp_resolved_files.txt
-          sed -i '1d' temp_resolved_files.txt
-          
-          # Leer referencias de importación
-          FILE_REFERENCES=$(grep -Eo 'import\s+.*\s+from\s+["'"'"'][^"'"'"']+["'"'"'];' "$current_file" || echo "")
-          echo "Referencias encontradas en $current_file:"
-          echo "$FILE_REFERENCES"
-          echo ""
-
-          while IFS= read -r file; do
-            path=$(echo "$file" | sed -E 's/.*from\s+["'"'"']([^"'"'"']+)["'"'"'];/\1/')
-            resolved_path=""
-
-            # Resolver rutas relativas
-            if [[ "$path" == .* || "$path" == ..* ]]; then
-              resolved_path=$(realpath --relative-to=. "$(dirname "$current_file")/$path")
-            fi
-
-            # Resolver alias
-            if [[ "$path" == @* ]]; then
-              alias_name=$(echo "$path" | cut -d'/' -f1)
-              alias_subpath=$(echo "$path" | sed -E 's|^[^/]+/?||')
-              alias_base=$(grep -o "\"$alias_name\"[[:space:]]*:[[:space:]]*\"[^\"]*\"" .aliases.json | awk -F ': ' '{print $2}' | tr -d '"')
-              resolved_path="${alias_base}/$alias_subpath"
-            fi
-
-            # Añadir extensión si falta
-            if [[ "$resolved_path" != *.js && "$resolved_path" != *.ts ]]; then
-              if [[ -f "${resolved_path}.js" ]]; then
-                resolved_path="${resolved_path}.js"
-              elif [[ -f "${resolved_path}.ts" ]]; then
-                resolved_path="${resolved_path}.ts"
-              fi
-            fi
-
-            # Eliminar './' al principio de la ruta
-            resolved_path="${resolved_path#./}"
-
-            # Filtrar y mostrar solo las rutas relevantes
-            if [[ "$resolved_path" == cypress/* ]]; then
-              echo "Archivo relevante encontrado: $resolved_path"
-              if ! grep -qx "$resolved_path" resolved_files.txt; then
-                echo "$resolved_path" >> resolved_files.txt
-                echo "$resolved_path" >> temp_resolved_files.txt
-              fi
-            fi
-          done <<< "$FILE_REFERENCES"
-
-          echo "Contenido actual de resolved_files.txt:"
-          cat resolved_files.txt
-          echo ""
-
-          echo "Contenido actual de temp_resolved_files.txt:"
-          cat temp_resolved_files.txt
-          echo ""
-        done
-
-        echo "Resolución de rutas completa."
-        echo "Contenido final de resolved_files.txt:"
-        cat resolved_files.txt
+          # Agregar la ruta al archivo temporal
+          TEMP_FILES+="$resolved_path"$'\n'
+        done <<< "$FIXTURE_REFERENCES"
+        
+        # Guardar resultados
+        echo "Contenido actual de resolved_files.txt:"
+        echo "$TEMP_FILES"
+        echo "$TEMP_FILES" > resolved_files.txt
         echo ""
 
     - name: Show resolved files content
       run: |
-        echo "Mostrando contenido final de resolved_files.txt:"
+        echo "Contenido de resolved_files.txt final:"
         cat resolved_files.txt
+        echo ""
+
+    - name: Step 4 - Save final results to a file
+      run: |
+        echo "$TEMP_FILES" > resolved_files.txt
+        echo "Rutas relevantes guardadas en resolved_files.txt"
 
