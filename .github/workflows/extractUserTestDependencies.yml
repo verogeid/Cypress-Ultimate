@@ -55,6 +55,10 @@ jobs:
             resolved_path="${alias_base}/$alias_subpath"
             echo "Ruta resuelta (alias): $resolved_path"
           fi
+          
+          # Añadir línea vacía tras la ruta resuelta
+          echo ""
+          
           # Eliminar './' al principio de la ruta, si existe
           resolved_path="${resolved_path#./}"
 
@@ -63,6 +67,9 @@ jobs:
             echo "Archivo relevante encontrado: $resolved_path"
             echo "$resolved_path" >> resolved_files.txt
           fi
+          
+          # Añadir delimitador al final de la iteración
+          echo "--------"
         done <<< "$FILE_REFERENCES"
         echo "Archivos relevantes finales:"
         cat resolved_files.txt
