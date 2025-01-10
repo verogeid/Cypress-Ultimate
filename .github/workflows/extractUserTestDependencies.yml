@@ -11,8 +11,6 @@ on:
 jobs:
   extract-references:
     runs-on: ubuntu-latest
-    env:
-      RESOLVED_FILES: ""  # Variable para las rutas resueltas
 
     steps:
     - name: Check out repository
@@ -39,6 +37,7 @@ jobs:
     - name: Step 3 - Process and resolve paths from import statements
       run: |
         FILE_REFERENCES=$(grep -Eo 'import\s+.*\s+from\s+["'"'][^"'"']+["'""];' "${{ github.event.inputs.test_file }}" || echo "")
+        RESOLVED_FILES=""
         while IFS= read -r file; do
           path=$(echo "$file" | sed -E 's/.*from\s+["'"']([^"'"']+)["'"'];/\1/')
           
@@ -68,19 +67,19 @@ jobs:
           # Filtrar y mostrar solo las rutas relevantes
           if [[ "$resolved_path" == cypress/* ]]; then
             echo "Archivo relevante encontrado: $resolved_path"
-            # Agregar a la variable de entorno RESOLVED_FILES
-            echo "RESOLVED_FILES=${{ env.RESOLVED_FILES }}$resolved_path" >> $GITHUB_ENV
+            # Guardar en la variable de archivos resueltos
+            RESOLVED_FILES="${RESOLVED_FILES}$resolved_path"$'\n'
           fi
 
           # Mostrar resolved_files dentro del bucle
           echo "Contenido de RESOLVED_FILES dentro del bucle:"
-          echo ""
+          echo "$RESOLVED_FILES"
 
         done <<< "$FILE_REFERENCES"
-        
-    - name: Show final results
+
+    - name: Save resolved files to a text file
       run: |
-        echo ""  # Línea vacía antes del resultado final
-        echo "Contenido final de RESOLVED_FILES:"
-        echo "${{ env.RESOLVED_FILES }}"
+        echo "Guardando archivos resueltos en resolved_files.txt"
+        echo "$RESOLVED_FILES" > resolved_files.txt
+        cat resolved_files.txt
 
