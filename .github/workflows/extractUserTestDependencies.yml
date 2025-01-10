@@ -28,25 +28,21 @@ jobs:
         echo "Contenido de alias_list.txt:"
         cat alias_list.txt
 
-    - name: Step 2 - Extract import statements
+    - name: Step 2 - Process and resolve paths from import statements
       run: |
-        FILE_REFERENCES=$(grep -Eo 'import\s+.*\s+from\s+["'"'"'][^"'"'"']+["'"'"'];' "${{ github.event.inputs.test_file }}" || echo "")
-        echo "Referencias encontradas:"
-        echo "$FILE_REFERENCES"
-
-    - name: Step 3 - Process and resolve paths from import statements
-      run: |
-        FILE_REFERENCES=$(grep -Eo 'import\s+.*\s+from\s+["'"'"'][^"'"'"']+["'"'"'];' "${{ github.event.inputs.test_file }}" || echo "")
-        RESOLVED_FILES="${{ github.event.inputs.test_file }}"
+        RESOLVED_FILES="cypress/e2e/Tests/API/Cards/GX3-5811-boardMembers.api.cy.ts"
         echo "Ruta posix inicial: $RESOLVED_FILES"
         
-        # Función recursiva para procesar archivos
         function process_file() {
           local file=$1
           echo "Procesando archivo: $file"
           FILE_REFERENCES=$(grep -Eo 'import\s+.*\s+from\s+["'"'"'][^"'"'"']+["'"'"']' "$file" || echo "")
+          echo "Referencias encontradas en el archivo $file:"
+          echo "$FILE_REFERENCES"
+
           while IFS= read -r reference; do
             path=$(echo "$reference" | sed -E 's/.*from\s+["'"'"']([^"'"'"']+)["'"'"'];/\1/')
+            echo "Ruta de referencia encontrada: $path"
             
             # Resolver rutas relativas
             if [[ "$path" == .* || "$path" == ..* ]]; then
@@ -65,12 +61,12 @@ jobs:
             
             # Eliminar './' al principio de la ruta, si existe
             resolved_path="${resolved_path#./}"
-            echo ""
+            echo "Ruta final procesada: $resolved_path"
             
             # Filtrar y mostrar solo las rutas relevantes
             if [[ "$resolved_path" == cypress/* ]]; then
               echo "Archivo relevante encontrado: $resolved_path"
-              RESOLVED_FILES+="$resolved_path"$'\n'
+              echo "$resolved_path" >> resolved_files.txt
               
               # Llamar a la función recursiva para procesar archivos referenciados
               process_file "$resolved_path"
@@ -80,19 +76,8 @@ jobs:
         }
 
         # Iniciar el proceso con el archivo inicial
-        process_file "${{ github.event.inputs.test_file }}"
+        process_file "cypress/e2e/Tests/API/Cards/GX3-5811-boardMembers.api.cy.ts"
+        
         echo "Archivos relevantes finales:"
-        echo "$RESOLVED_FILES"
-
-    - name: Show resolved files content
-      run: |
-        echo "Contenido de RESOLVED_FILES:"
-        echo "$RESOLVED_FILES"
-        echo "$RESOLVED_FILES" > resolved_files.txt
         cat resolved_files.txt
-
-    - name: Step 4 - Save final results to a file
-      run: |
-        echo "$RESOLVED_FILES" > resolved_files.txt
-        echo "Rutas relevantes guardadas en resolved_files.txt"
 
