@@ -74,7 +74,7 @@ jobs:
         # Procesar cy.fixture
         while IFS= read -r fixture; do
           ##### Buscar la ruta de cy.fixture
-          path=$(echo "$fixture" | sed -E 's/cy\.fixture(["'"']([^"'"']+)["'"'])./\1/')
+          path=$(echo "$fixture" | sed -E 's/cy\.fixture(["'"']([^"'"']+)["'"']).\1/')
           resolved_path="$path"
           echo "Ruta de cy.fixture: $resolved_path"
           
