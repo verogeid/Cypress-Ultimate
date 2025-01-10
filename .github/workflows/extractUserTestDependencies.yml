@@ -33,6 +33,9 @@ jobs:
         RESOLVED_FILES="cypress/e2e/Tests/API/Cards/GX3-5811-boardMembers.api.cy.ts"
         echo "Ruta posix inicial: $RESOLVED_FILES"
         
+        # Crear el archivo de salida
+        echo "$RESOLVED_FILES" > resolved_files.txt
+        
         function process_file() {
           local file=$1
           echo "Procesando archivo: $file"
