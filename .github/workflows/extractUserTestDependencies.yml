@@ -3,71 +3,70 @@ name: Extract File References
 on:
   workflow_dispatch:
     inputs:
-      test_file:
-        description: 'Ruta del archivo de prueba'
+      file_path:
+        description: 'Ruta del archivo a procesar'
         required: true
         default: 'cypress/e2e/Tests/API/Cards/GX3-5811-boardMembers.api.cy.ts'
 
 jobs:
-  extract-references:
+  resolver_rutas:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Check out repository
-      uses: actions/checkout@v2
+      - name: Leer los alias desde .aliases.json
+        run: |
+          echo "Leyendo los alias desde .aliases.json"
+          ALIAS_JSON=$(cat .aliases.json)
+          echo "$ALIAS_JSON" | grep -o '"@[^"]*":\s*"[^"]*"' | awk -F ': ' '{print $1, $2}' > alias_list.txt
+          echo "Alias leídos y almacenados en alias_list.txt"
+      
+      - name: Mostrar el contenido de alias_list.txt
+        run: |
+          echo "Contenido de alias_list.txt:"
+          cat alias_list.txt
 
-    - name: Step 1 - Leer los alias desde .aliases.json
-      run: |
-        echo "Leyendo los alias desde .aliases.json"
-        ALIAS_JSON=$(cat .aliases.json)
-        echo "$ALIAS_JSON" | grep -o '"@[^"]*":\s*"[^"]*"' | awk -F ': ' '{print $1, $2}' > alias_list.txt
-        echo "Alias leídos y almacenados en alias_list.txt"
+      - name: Buscar referencias de archivos
+        run: |
+          FILE_REFERENCES=$(grep -Eo 'import\s+.*\s+from\s+["'"'"'][^"'"'"']+["'"'"'];' "${{ github.event.inputs.file_path }}" || echo "")
+          echo "Referencias encontradas:"
+          echo "$FILE_REFERENCES"
+        
+      - name: Resolver rutas relativas y alias
+        run: |
+          RESOLVED_FILES=""
+          while IFS= read -r file; do
+            path=$(echo "$file" | sed -E 's/.*from\s+["'"'"']([^"'"'"']+)["'"'"'];/\1/')
+            
+            # Eliminar './' al principio de la ruta, si existe
+            path="${path#./}"
 
-    - name: Step 2 - Mostrar el contenido de alias_list.txt
-      run: |
-        echo "Contenido de alias_list.txt:"
-        cat alias_list.txt
+            # Resolver rutas relativas
+            if [[ "$path" == .* || "$path" == ..* ]]; then
+              resolved_path=$(readlink -f "$(dirname "${{ github.event.inputs.file_path }}")/$path")
+              echo "Ruta resuelta (relativa): $resolved_path"
+            fi
+            
+            # Resolver rutas con alias
+            if [[ "$path" == @* ]]; then
+              alias_name=$(echo "$path" | cut -d'/' -f1)
+              alias_subpath=$(echo "$path" | sed -E 's|^[^/]+/?||')
+              alias_base=$(grep -o "\"$alias_name\"[[:space:]]*:[[:space:]]*\"[^\"]*\"" .aliases.json | awk -F ': ' '{print $2}' | tr -d '"')
+              resolved_path=$(readlink -f "$alias_base/$alias_subpath")
+              echo "Ruta resuelta (alias): $resolved_path"
+            fi
 
-    - name: Step 3 - Procesar y resolver rutas desde las sentencias de importación
-      run: |
-        FILE_REFERENCES=$(grep -Eo 'import\s+.*\s+from\s+["'"'"'][^"'"'"']+["'"'"'];' "${{ github.event.inputs.test_file }}" || echo "")
-        RESOLVED_FILES=""
-        while IFS= read -r file; do
-          # Extraer la ruta de cada declaración de importación
-          path=$(echo "$file" | sed -E 's/.*from\s+["'"'"']([^"'"'"']+)["'"'"'];/\1/')
+            # Filtrar y mostrar solo las rutas relevantes que apuntan a 'cypress/'
+            if [[ "$resolved_path" == *"cypress/"* ]]; then
+              echo "Archivo relevante encontrado: $resolved_path"
+              RESOLVED_FILES+="$resolved_path"$'\n'
+            fi
+          done <<< "$FILE_REFERENCES"
+          echo "Archivos relevantes finales:"
+          echo "$RESOLVED_FILES"
           
-          # Eliminar './' al principio de la ruta, si existe
-          path="${path#./}"
-
-          # Resolver rutas relativas (con './' o '../')
-          if [[ "$path" == .* || "$path" == ..* ]]; then
-            resolved_path=$(readlink -f "$(dirname "${{ github.event.inputs.test_file }}")/$path")
-            echo "Ruta resuelta (relativa): $resolved_path"
-          fi
-          
-          # Resolver rutas con alias (por ejemplo, '@helper')
-          if [[ "$path" == @* ]]; then
-            alias_name=$(echo "$path" | cut -d'/' -f1)
-            alias_subpath=$(echo "$path" | sed -E 's|^[^/]+/?||')
-            # Buscar la base del alias en .aliases.json
-            alias_base=$(grep -o "\"$alias_name\"[[:space:]]*:[[:space:]]*\"[^\"]*\"" .aliases.json | awk -F ': ' '{print $2}' | tr -d '"')
-            # Resolver la ruta final con la base del alias
-            resolved_path=$(readlink -f "$alias_base/$alias_subpath")
-            echo "Ruta resuelta (alias): $resolved_path"
-          fi
-
-          # Filtrar y mostrar solo las rutas relevantes que apuntan a 'cypress/'
-          if [[ "$resolved_path" == *"cypress/"* ]]; then
-            echo "Archivo relevante encontrado: $resolved_path"
-            RESOLVED_FILES+="$resolved_path"$'\n'
-          fi
-        done <<< "$FILE_REFERENCES"
-        echo "Archivos relevantes finales:"
-        echo "$RESOLVED_FILES"
-
-    - name: Step 4 - Mostrar el contenido de las rutas resueltas
-      run: |
-        echo "Contenido de resolved_files.txt:"
-        echo "$RESOLVED_FILES" > resolved_files.txt
-        cat resolved_files.txt
+      - name: Mostrar el contenido de resolved_files.txt
+        run: |
+          echo "Contenido de resolved_files.txt:"
+          echo "$RESOLVED_FILES" > resolved_files.txt
+          cat resolved_files.txt
 
