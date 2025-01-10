@@ -26,13 +26,20 @@ jobs:
         echo "Contenido inicial de alias_list.txt:"
         cat alias_list.txt
         echo ""
-    - name: Step 2 - Extract import statements
+        
+    - name: Step 2 - Extract import and cy.fixture statements
       run: |
         echo "Leyendo las referencias de importación desde el archivo: ${{ github.event.inputs.test_file }}"
         FILE_REFERENCES=$(grep -Eo 'import\s+.*\s+from\s+["'"'"'][^"'"'"']+["'"'"'];' "${{ github.event.inputs.test_file }}" || echo "")
+        
+        ##### Buscar referencias de cy.fixture
+        FIXTURE_REFERENCES=$(grep -Eo 'cy\.fixture_["'"'][^"'"']+["'"']_.' "${{ github.event.inputs.test_file }}" || echo "")
+        
         echo "Referencias encontradas:"
         echo "$FILE_REFERENCES"
+        echo "$FIXTURE_REFERENCES"
         echo ""
+        
     - name: Step 3 - Process and resolve paths iteratively
       run: |
         echo "Iniciando la resolución de rutas..."
@@ -91,6 +98,22 @@ jobs:
               fi
             fi
           done <<< "$FILE_REFERENCES"
+          
+          # Procesar cy.fixture
+          while IFS= read -r fixture; do
+            # Buscar la ruta de cy.fixture
+            path=$(echo "$fixture" | sed -E 's/cy\.fixture_["'"']([^"'"']+)["'"']_.\1/')
+            resolved_path="$path"
+            echo "Ruta de cy.fixture: $resolved_path"
+            if [[ "$resolved_path" == cypress/* ]]; then
+              echo "Archivo relevante de cy.fixture encontrado: $resolved_path"
+              if ! grep -qx "$resolved_path" resolved_files.txt; then
+                echo "$resolved_path" >> resolved_files.txt
+                echo "$resolved_path" >> temp_resolved_files.txt
+              fi
+            fi
+          done <<< "$FIXTURE_REFERENCES"
+          
           echo "Contenido actual de resolved_files.txt:"
           cat resolved_files.txt
           echo ""
@@ -102,7 +125,9 @@ jobs:
         echo "Contenido final de resolved_files.txt:"
         cat resolved_files.txt
         echo ""
+
     - name: Show resolved files content
       run: |
         echo "Mostrando contenido final de resolved_files.txt:"
         cat resolved_files.txt
+
