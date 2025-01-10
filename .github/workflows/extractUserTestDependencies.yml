@@ -11,6 +11,9 @@ on:
 jobs:
   extract-references:
     runs-on: ubuntu-latest
+    env:
+      RESOLVED_FILES: ""  # Variable para las rutas resueltas
+      ALIAS_LIST: ""  # Variable para los alias
 
     steps:
     - name: Check out repository
@@ -20,73 +23,68 @@ jobs:
       run: |
         echo "Leyendo los alias desde .aliases.json"
         ALIAS_JSON=$(cat .aliases.json)
-        echo "$ALIAS_JSON" | grep -o '"@[^"]*":\s*"[^"]*"' | awk -F ': ' '{print $1, $2}' > alias_list.txt
-        echo "Alias leídos y almacenados en alias_list.txt"
-        
+        # Añadir los alias a la variable ALIAS_LIST
+        ALIAS_LIST=$(echo "$ALIAS_JSON" | grep -o '"@[^"]*":\s*"[^"]*"' | awk -F ': ' '{print $1, $2}' | tr '\n' ' ' )
+        echo "Alias leídos y almacenados en ALIAS_LIST"
+        echo "ALIAS_LIST=${ALIAS_LIST}" >> $GITHUB_ENV  # Guardar en la variable de entorno
+
     - name: Show alias list content
       run: |
-        echo "Contenido de alias_list.txt:"
-        cat alias_list.txt
+        echo "Contenido de ALIAS_LIST:"
+        echo "${{ env.ALIAS_LIST }}"
 
     - name: Step 2 - Extract import statements
       run: |
-        FILE_REFERENCES=$(grep -Eo 'import\s+.*\s+from\s+["'"'"'][^"'"'"']+["'"'"'];' "${{ github.event.inputs.test_file }}" || echo "")
+        FILE_REFERENCES=$(grep -Eo 'import\s+.*\s+from\s+["'"'][^"'"']+["'"'];' "${{ github.event.inputs.test_file }}" || echo "")
         echo "Referencias encontradas:"
         echo "$FILE_REFERENCES"
 
     - name: Step 3 - Process and resolve paths from import statements
       run: |
-        FILE_REFERENCES=$(grep -Eo 'import\s+.*\s+from\s+["'"'"'][^"'"'"']+["'"'"'];' "${{ github.event.inputs.test_file }}" || echo "")
+        FILE_REFERENCES=$(grep -Eo 'import\s+.*\s+from\s+["'"'][^"'"']+["'""];' "${{ github.event.inputs.test_file }}" || echo "")
         while IFS= read -r file; do
-          path=$(echo "$file" | sed -E 's/.*from\s+["'"'"']([^"'"'"']+)["'"'"'];/\1/')
+          path=$(echo "$file" | sed -E 's/.*from\s+["'"']([^"'"']+)["'"'];/\1/')
           
           # Resolver rutas relativas
           if [[ "$path" == .* || "$path" == ..* ]]; then
             resolved_path=$(realpath --relative-to=. "$(dirname "${{ github.event.inputs.test_file }}")/$path")
             echo "Ruta resuelta (relativa): $resolved_path"
+            echo "$resolved_path"  # Mostrar rutas relativas
           fi
           
           # Resolver alias
           if [[ "$path" == @* ]]; then
             alias_name=$(echo "$path" | cut -d'/' -f1)
             alias_subpath=$(echo "$path" | sed -E 's|^[^/]+/?||')
-            alias_base=$(grep -o "\"$alias_name\"[[:space:]]*:[[:space:]]*\"[^\"]*\"" .aliases.json | awk -F ': ' '{print $2}' | tr -d '"')
+            alias_base=$(echo "${{ env.ALIAS_LIST }}" | grep -o "\"$alias_name\"[[:space:]]*:[[:space:]]*\"[^\"]*\"" | awk -F ': ' '{print $2}' | tr -d '"')
             resolved_path="${alias_base}/$alias_subpath"
             echo "Ruta resuelta (alias): $resolved_path"
           fi
 
-          # Mostrar guiones antes de eliminar './'
-          echo "--------- Antes de eliminar './'"
-
-          # Eliminar './' al principio de la ruta, si existe
-          resolved_path="${resolved_path#./}"
-
-          # Mostrar guiones después de la eliminación
-          echo "--------- Después de eliminar './'"
+          # Mostrar líneas con './' y luego líneas sin './'
+          if [[ "$resolved_path" == ./* ]]; then
+            echo "$resolved_path"
+            echo ""  # Línea vacía
+          else
+            echo "$resolved_path"
+          fi
 
           # Filtrar y mostrar solo las rutas relevantes
           if [[ "$resolved_path" == cypress/* ]]; then
             echo "Archivo relevante encontrado: $resolved_path"
-            RESOLVED_FILES+="$resolved_path"$'\n'
+            # Agregar a la variable de entorno RESOLVED_FILES
+            echo "RESOLVED_FILES=${{ env.RESOLVED_FILES }}$resolved_path" >> $GITHUB_ENV
           fi
 
           # Mostrar resolved_files dentro del bucle
-          echo "Contenido de resolved_files dentro del bucle:"
-          echo "$RESOLVED_FILES"
-          
+          echo "Contenido de RESOLVED_FILES dentro del bucle:"
+          echo "${{ env.RESOLVED_FILES }}"
+
         done <<< "$FILE_REFERENCES"
-        echo "Archivos relevantes finales:"
-        echo "$RESOLVED_FILES"
-
-    - name: Show resolved files content
+        
+    - name: Show final results
       run: |
-        echo "Contenido de RESOLVED_FILES:"
-        echo "$RESOLVED_FILES"
-        echo "$RESOLVED_FILES" > resolved_files.txt
-        cat resolved_files.txt
-
-    - name: Step 4 - Save final results to a file
-      run: |
-        echo "$RESOLVED_FILES" > resolved_files.txt
-        echo "Rutas relevantes guardadas en resolved_files.txt"
+        echo ""  # Línea vacía antes del resultado final
+        echo "Contenido final de RESOLVED_FILES:"
+        echo "${{ env.RESOLVED_FILES }}"
 
