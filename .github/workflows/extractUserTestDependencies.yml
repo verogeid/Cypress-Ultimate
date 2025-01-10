@@ -38,13 +38,15 @@ jobs:
       run: |
         FILE_REFERENCES=$(grep -Eo 'import\s+.*\s+from\s+["'"'"'][^"'"'"']+["'"'"'];' "${{ github.event.inputs.test_file }}" || echo "")
         > resolved_files.txt
+        # Incluir la ruta de entrada como la primera línea del archivo
+        echo "${{ github.event.inputs.test_file }}" >> resolved_files.txt
+
         while IFS= read -r file; do
           path=$(echo "$file" | sed -E 's/.*from\s+["'"'"']([^"'"'"']+)["'"'"'];/\1/')
           
           # Resolver rutas relativas
           if [[ "$path" == .* || "$path" == ..* ]]; then
             resolved_path=$(realpath --relative-to=. "$(dirname "${{ github.event.inputs.test_file }}")/$path")
-            echo "Ruta resuelta (relativa): $resolved_path"
           fi
           
           # Resolver alias
@@ -53,12 +55,20 @@ jobs:
             alias_subpath=$(echo "$path" | sed -E 's|^[^/]+/?||')
             alias_base=$(grep -o "\"$alias_name\"[[:space:]]*:[[:space:]]*\"[^\"]*\"" .aliases.json | awk -F ': ' '{print $2}' | tr -d '"')
             resolved_path="${alias_base}/$alias_subpath"
-            echo "Ruta resuelta (alias): $resolved_path"
+          fi
+          
+          # Añadir extensión .js o .ts si falta
+          if [[ "$resolved_path" != *.js && "$resolved_path" != *.ts ]]; then
+            if [[ -f "${resolved_path}.js" ]]; then
+              resolved_path="${resolved_path}.js"
+            elif [[ -f "${resolved_path}.ts" ]]; then
+              resolved_path="${resolved_path}.ts"
+            fi
           fi
           
           # Añadir línea vacía tras la ruta resuelta
           echo ""
-          
+
           # Eliminar './' al principio de la ruta, si existe
           resolved_path="${resolved_path#./}"
 
