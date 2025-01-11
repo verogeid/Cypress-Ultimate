@@ -111,11 +111,11 @@ jobs:
         while IFS= read -r resolved_file; do
           echo "Analizando archivo: $resolved_file"
           # Buscar y extraer la ruta entre paréntesis de 'cy.fixture'
-          awk '/cy\.fixture((/ {
+          awk '/cy\.fixture/ {
             # Mostrar la línea completa de 'cy.fixture' para depuración
             print "Línea de cy.fixture encontrada: " $0
             # Extraer lo que está entre los paréntesis
-            match($0, /cy\.fixture((["'"'"']([^"'"'"']+)["'"'"']))/, matches)
+            match($0, /cy\.fixture(["'"'"']([^"'"'"']+)["'"'"'])/, matches)
             if (matches[1] != "") {
               # Mostrar la ruta extraída para depuración
               print "Ruta extraída: " matches[1]
