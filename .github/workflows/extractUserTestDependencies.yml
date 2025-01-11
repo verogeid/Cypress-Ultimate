@@ -102,7 +102,7 @@ jobs:
           echo "Analizando archivo: $resolved_file"
           
           # Verifica si la sentencia 'cy.fixture' está presente en el archivo
-          awk '/cy\.fixture['"]([^'"]+)['"]/ {
+          awk '/cy\.fixture((['"]([^'"]+)['"]))/ {
             print "cy.fixture encontrado en línea " NR ": " $0
             print "Ruta extraída: " substr($0, RSTART+13, RLENGTH-14)
           }' "$resolved_file"
