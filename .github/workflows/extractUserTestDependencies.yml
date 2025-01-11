@@ -34,23 +34,28 @@ jobs:
         echo "Referencias encontradas:"
         echo "$FILE_REFERENCES"
         echo ""
-
+        
     - name: Step 3 - Process and resolve paths iteratively
       run: |
         echo "Iniciando la resolución de rutas..."
         > resolved_files.txt
         > temp_resolved_files.txt
+        # Añadir la ruta inicial al archivo resolved_files.txt
         echo "Ruta de entrada: ${{ github.event.inputs.test_file }}" >> resolved_files.txt
         echo "${{ github.event.inputs.test_file }}" >> temp_resolved_files.txt
         while true; do
+          # Leer el primer archivo de temp_resolved_files.txt
           current_file=$(head -n 1 temp_resolved_files.txt)
           if [[ -z "$current_file" ]]; then
             echo "No hay más archivos que procesar, saliendo..."
             break
           fi
           echo "Leyendo archivo actual: $current_file"
+          
+          # Eliminar el archivo leído de temp_resolved_files.txt
           sed -i '1d' temp_resolved_files.txt
           
+          # Leer referencias de importación
           FILE_REFERENCES=$(grep -Eo 'import\s+.*\s+from\s+["'"'"'][^"'"'"']+["'"'"'];' "$current_file" || echo "")
           echo "Referencias encontradas en $current_file:"
           echo "$FILE_REFERENCES"
@@ -58,15 +63,18 @@ jobs:
           while IFS= read -r file; do
             path=$(echo "$file" | sed -E 's/.*from\s+["'"'"']([^"'"'"']+)["'"'"'];/\1/')
             resolved_path=""
+            # Resolver rutas relativas
             if [[ "$path" == .* || "$path" == ..* ]]; then
               resolved_path=$(realpath --relative-to=. "$(dirname "$current_file")/$path")
             fi
+            # Resolver alias
             if [[ "$path" == @* ]]; then
               alias_name=$(echo "$path" | cut -d'/' -f1)
               alias_subpath=$(echo "$path" | sed -E 's|^[^/]+/?||')
               alias_base=$(grep -o "\"$alias_name\"[[:space:]]*:[[:space:]]*\"[^\"]*\"" .aliases.json | awk -F ': ' '{print $2}' | tr -d '"')
               resolved_path="${alias_base}/$alias_subpath"
             fi
+            # Añadir extensión si falta
             if [[ "$resolved_path" != *.js && "$resolved_path" != *.ts ]]; then
               if [[ -f "${resolved_path}.js" ]]; then
                 resolved_path="${resolved_path}.js"
@@ -74,7 +82,9 @@ jobs:
                 resolved_path="${resolved_path}.ts"
               fi
             fi
+            # Eliminar './' al principio de la ruta
             resolved_path="${resolved_path#./}"
+            # Filtrar y mostrar solo las rutas relevantes
             if [[ "$resolved_path" == cypress/* ]]; then
               echo "Archivo relevante encontrado: $resolved_path"
               if ! grep -qx "$resolved_path" resolved_files.txt; then
@@ -95,16 +105,21 @@ jobs:
         cat resolved_files.txt
         echo ""
 
-    - name: Step 4 - Search for 'cy.fixture' statements in relevant files
+    - name: Buscar sentencias 'cy.fixture' y extraer rutas
       run: |
         echo "Buscando sentencias 'cy.fixture' en los archivos relevantes..."
         while IFS= read -r resolved_file; do
           echo "Analizando archivo: $resolved_file"
-          
-          # Verifica si la sentencia 'cy.fixture' está presente en el archivo
-          awk '/cy\.fixture((['"]([^'"]+)['"]))/ {
-            print "cy.fixture encontrado en línea " NR ": " $0
-            print "Ruta extraída: " substr($0, RSTART+13, RLENGTH-14)
+          # Buscar y extraer la ruta entre paréntesis de 'cy.fixture'
+          awk '/cy\.fixture/ {
+            # Mostrar la línea completa de 'cy.fixture' para depuración
+            print "Línea de cy.fixture encontrada: " $0
+            # Extraer lo que está entre los paréntesis
+            match($0, /cy\.fixture["'"'"']([^"'"'"']+)["'"'"']/, matches)
+            if (matches[1] != "") {
+              # Mostrar la ruta extraída para depuración
+              print "Ruta extraída: " matches[1]
+            }
           }' "$resolved_file"
         done < resolved_files.txt
 
