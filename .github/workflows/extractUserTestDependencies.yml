@@ -41,7 +41,7 @@ jobs:
         > resolved_files.txt
         > temp_resolved_files.txt
         # Añadir la ruta inicial al archivo resolved_files.txt
-        echo "Ruta de entrada: ${{ github.event.inputs.test_file }}" >> resolved_files.txt
+        echo "${{ github.event.inputs.test_file }}" >> resolved_files.txt
         echo "${{ github.event.inputs.test_file }}" >> temp_resolved_files.txt
         while true; do
           # Leer el primer archivo de temp_resolved_files.txt
