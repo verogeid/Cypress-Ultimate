@@ -30,6 +30,8 @@ jobs:
     - name: Install dependencies
       run: |
         npm install marge -g
+        echo "PATH=$(npm config get prefix)/bin:\$PATH" >> $GITHUB_ENV
+        marge --version
 
     - name: Determine input file
       id: resolve-input
