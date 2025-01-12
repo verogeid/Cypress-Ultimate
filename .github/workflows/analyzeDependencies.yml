@@ -1,0 +1,73 @@
+name: Analyze TypeScript Dependencies
+
+on:
+  workflow_dispatch:
+    inputs:
+      test_file:
+        description: 'Ruta del archivo de prueba en TypeScript'
+        required: false
+        default: ''
+
+  workflow_call:
+    inputs:
+      test_file:
+        required: true
+        type: string
+
+jobs:
+  analyze-dependencies:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Check out repository
+      uses: actions/checkout@v3
+
+    - name: Configure Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+
+    - name: Install dependencies
+      run: |
+        npm install marge -g
+
+    - name: Determine input file
+      id: resolve-input
+      run: |
+        if [ "${{ github.event.inputs.test_file }}" ]; then
+          echo "test_file=${{ github.event.inputs.test_file }}" >> $GITHUB_ENV
+        elif [ "${{ inputs.test_file }}" ]; then
+          echo "test_file=${{ inputs.test_file }}" >> $GITHUB_ENV
+        else
+          echo "Error: No se proporcionó una ruta de archivo."
+          exit 1
+        fi
+        echo "Archivo de prueba: $test_file"
+
+    - name: Generate dependency analysis
+      id: analyze
+      run: |
+        test_file="$test_file"
+
+        marge --file "$test_file" --output dependencies.json
+        echo "Análisis de dependencias generado en dependencies.json."
+
+        cat dependencies.json | jq -r '.dependencies[] | select(.resolved | contains("cypress/")) | .resolved' > resolved_paths.txt
+        sed -i "s|$(pwd)/||g" resolved_paths.txt
+
+        marge --file "$test_file" --graph --output dependency-graph.html
+
+    - name: Show resolved paths
+      run: |
+        echo "Rutas resueltas relevantes:"
+        cat resolved_paths.txt
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: dependency-analysis
+        path: |
+          dependencies.json
+          resolved_paths.txt
+          dependency-graph.html
+
