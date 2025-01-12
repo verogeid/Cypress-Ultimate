@@ -99,11 +99,16 @@ jobs:
         echo "Buscando sentencias 'cy.fixture' en los archivos relevantes..."
         while IFS= read -r resolved_file; do
           echo "Analizando archivo: $resolved_file"
-          grep -o 'cy\.fixture(["'"'"'][^"'"'"']+["'"'"'])' "$resolved_file" | while IFS= read -r match; do
-            echo "    Línea de cy.fixture encontrada: $match"
-            ruta=$(echo "$match" | grep -o '(["'"'"'][^"'"'"']+["'"'"'])')
-            echo "    Ruta extraída: $ruta"
-          done
+          awk '/cy\.fixture/ {
+            print "    Línea encontrada: " $0
+            ruta_completa=$0
+            ruta=$(echo "$ruta_completa" | grep -o '(["'"'"'][^"'"'"']+["'"'"'])')
+            if [[ -n "$ruta" ]]; then
+              echo "    Ruta extraída: $ruta"
+            else
+              echo "    No se extrajo una ruta válida."
+            fi
+          }' "$resolved_file"
         done < resolved_files.txt
     - name: Show resolved files content
       run: |
