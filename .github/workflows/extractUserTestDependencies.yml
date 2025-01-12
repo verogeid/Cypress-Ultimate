@@ -120,7 +120,7 @@ jobs:
             # Guardar la línea completa
             print "    Línea encontrada: " $0
             # Extraer la ruta de la línea usando grep
-            ruta=$(echo "$0" | grep -oE '(["'"'"'][^"'"'"']+["'"'"'])' | tr -d '()"'"'"')
+            ruta=$(echo "$0" | grep -oE '((["'"'"'][^"'"'"']+["'"'"']))' | tr -d '()"'"'"')
             if [[ -n "$ruta" ]]; then
               echo "    Ruta extraída: $ruta"
             else
