@@ -117,7 +117,7 @@ jobs:
             print "    Número de línea: " NR
             
             # Imprimir la línea completa de 'cy.fixture'
-            print "    Línea de cy.fixture encontrada: " $0
+            print "Línea de encontrada: " $0
             
             # Extraer la ruta entre paréntesis y mostrarla
             match($0, /cy\.fixture(["'"'"']([^"'"'"']+)["'"'"'])/, matches)
