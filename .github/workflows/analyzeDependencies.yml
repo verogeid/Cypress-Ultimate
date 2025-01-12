@@ -53,9 +53,15 @@ jobs:
         # Generar el análisis de dependencias
         madge "$test_file" --json > dependencies.json
         echo "Análisis de dependencias generado en dependencies.json."
-
-        # Filtrar rutas relevantes
-        cat dependencies.json | jq -r '.dependencies[] | select(.resolved | contains("cypress/")) | .resolved' > resolved_paths.txt
+        
+        # Verificar si el archivo contiene datos válidos
+        if [ ! -s dependencies.json ]; then
+          echo "Error: El archivo dependencies.json está vacío o no se generó correctamente."
+          exit 1
+        fi
+        
+        # Filtrar rutas relevantes usando grep
+        grep -o '"resolved":\s*"[^"]*"' dependencies.json | grep "cypress/" | sed 's/"resolved": "//g' > resolved_paths.txt
         sed -i "s|$(pwd)/||g" resolved_paths.txt
 
         # Generar el gráfico de dependencias
