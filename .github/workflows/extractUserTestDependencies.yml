@@ -27,7 +27,6 @@ jobs:
         cat alias_list.txt
         echo ""
         
-
     - name: Step 2 - Extract import statements
       run: |
         echo "Leyendo las referencias de importación desde el archivo: ${{ github.event.inputs.test_file }}"
@@ -36,7 +35,6 @@ jobs:
         echo "$FILE_REFERENCES"
         echo ""
         
-
     - name: Step 3 - Process and resolve paths iteratively
       run: |
         echo "Iniciando la resolución de rutas..."
@@ -106,31 +104,28 @@ jobs:
         echo "Contenido final de resolved_files.txt:"
         cat resolved_files.txt
         echo ""
-
-
-    - name: Spep 4 - Buscar sentencias 'cy.fixture' y extraer rutas
+        
+    - name: Buscar sentencias 'cy.fixture' y extraer rutas con sed
       run: |
         echo "Buscando sentencias 'cy.fixture' en los archivos relevantes..."
         while IFS= read -r resolved_file; do
           echo "Analizando archivo: $resolved_file"
-          # Buscar sentencias 'cy.fixture' en el archivo
+          # Usar awk para identificar las líneas con 'cy.fixture'
           awk '/cy\.fixture/ {
-            # Imprimir número de línea
-            print "    Número de línea: " NR
-            # Guardar la línea completa
-            print "    Línea encontrada: " $0
-            # Extraer la ruta de la línea usando grep
-            ruta=$(echo "$0" | grep -oE '((["'"'"'][^"'"'"']+["'"'"']))' | tr -d '()"'"'"')
+            print $0
+          }' "$resolved_file" | while IFS= read -r line; do
+            echo "    Línea encontrada: $line"
+            # Extraer la ruta entre paréntesis con sed
+            ruta=$(echo "$line" | sed -E 's/.*cy\.fixture((["'"'"'])([^"'"'"']+)\1.*/\2/')
             if [[ -n "$ruta" ]]; then
               echo "    Ruta extraída: $ruta"
             else
               echo "    No se extrajo una ruta válida."
             fi
-          }' "$resolved_file"
+          done
         done < resolved_files.txt
-
-
-    - name: Step 5 - Show resolved files content
+        
+    - name: Show resolved files content
       run: |
         echo "Mostrando contenido final de resolved_files.txt:"
         cat resolved_files.txt
