@@ -16,6 +16,7 @@ jobs:
     - name: Check out repository
       uses: actions/checkout@v2
 
+    # Step 1 - READ ALIASES
     - name: Step 1 - Read aliases from .aliases.json
       run: |
         echo "Reading aliases from .aliases.json"
@@ -27,6 +28,7 @@ jobs:
         cat alias_list.txt
         echo ""
 
+    # Step 2 - EXTRACT IMPORT STATEMENTS
     - name: Step 2 - Extract import statements
       run: |
         echo "Reading import references from file: ${{ github.event.inputs.test_file }}"
@@ -35,6 +37,7 @@ jobs:
         echo "$FILE_REFERENCES"
         echo ""
 
+    # Step 3 - RESOLVE IMPORT PATHS
     - name: Step 3 - Process and resolve paths iteratively
       run: |
         echo "Starting path resolution..."
@@ -94,6 +97,7 @@ jobs:
         cat resolved_files.txt
         echo ""
 
+    # Step 4 - EXTRACT 'cy.fixture' STATEMENTS
     - name: Step 4 - Search for 'cy.fixture' statements and store them
       run: |
         echo "Searching for 'cy.fixture' statements in relevant files..."
@@ -106,14 +110,16 @@ jobs:
           fi
         done < resolved_files.txt
 
+    # Step 5 - EXTRACT PATHS FROM 'cy.fixture' STATEMENTS
     - name: Step 5 - Extract paths from 'cy.fixture' statements
       run: |
         echo "Extracting paths from 'cy.fixture' statements..."
         while IFS= read -r fixture_statement; do
           echo "Analyzing statement: $fixture_statement"
-          echo "$fixture_statement" | sed -E 's/.*cy\.fixture(["'"'"']([^"'"'"']+)["'"'"'])/\1/'
+          echo "$fixture_statement" | sed -E "s/.*cy\.fixture['\"]([^'\"]+)['\"].*/\1/"
         done < fixture_statements.txt
 
+    # Step 6 - FINAL CONTENT
     - name: Step 6 - Show final content of resolved files
       run: |
         echo "Displaying final content of resolved_files.txt:"
