@@ -22,10 +22,6 @@ jobs:
         ALIAS_JSON=$(cat .aliases.json)
         echo "$ALIAS_JSON" | grep -o '"@[^"]*":\s*"[^"]*"' | awk -F ': ' '{print $1, $2}' > alias_list.txt
         echo "Alias leídos y almacenados en alias_list.txt"
-        echo ""
-        echo "Contenido inicial de alias_list.txt:"
-        cat alias_list.txt
-        echo ""
         
     - name: Step 2 - Extract import statements
       run: |
@@ -33,7 +29,6 @@ jobs:
         FILE_REFERENCES=$(grep -Eo 'import\s+.*\s+from\s+["'"'"'][^"'"'"']+["'"'"'];' "${{ github.event.inputs.test_file }}" || echo "")
         echo "Referencias encontradas:"
         echo "$FILE_REFERENCES"
-        echo ""
         
     - name: Step 3 - Process and resolve paths iteratively
       run: |
@@ -59,7 +54,7 @@ jobs:
           FILE_REFERENCES=$(grep -Eo 'import\s+.*\s+from\s+["'"'"'][^"'"'"']+["'"'"'];' "$current_file" || echo "")
           echo "Referencias encontradas en $current_file:"
           echo "$FILE_REFERENCES"
-          echo ""
+          
           while IFS= read -r file; do
             path=$(echo "$file" | sed -E 's/.*from\s+["'"'"']([^"'"'"']+)["'"'"'];/\1/')
             resolved_path=""
@@ -93,32 +88,22 @@ jobs:
               fi
             fi
           done <<< "$FILE_REFERENCES"
-          echo "Contenido actual de resolved_files.txt:"
-          cat resolved_files.txt
-          echo ""
-          echo "Contenido actual de temp_resolved_files.txt:"
-          cat temp_resolved_files.txt
-          echo ""
+          
         done
         echo "Resolución de rutas completa."
-        echo "Contenido final de resolved_files.txt:"
-        cat resolved_files.txt
-        echo ""
+        
     - name: Buscar sentencias 'cy.fixture' y extraer rutas
       run: |
         echo "Buscando sentencias 'cy.fixture' en los archivos relevantes..."
         while IFS= read -r resolved_file; do
           echo "Analizando archivo: $resolved_file"
-          # Buscar y extraer la ruta entre paréntesis de 'cy.fixture'
-          while IFS= read -r cy_fixture_line; do
-            # Asegurarnos de que estamos buscando solo la sentencia cy.fixture
-            if [[ "$cy_fixture_line" =~ cy\.fixture["'"'"']([^"'"'"']+)["'"'"'] ]]; then
-              echo "    Línea de cy.fixture encontrada: $cy_fixture_line"
+          # Leer el archivo y buscar las sentencias cy.fixture
+          while IFS= read -r line; do
+            if [[ "$line" =~ cy\.fixture(["'"'"']([^"'"'"']+)["'"'"']) ]]; then
+              echo "    Línea de cy.fixture encontrada: $line"
               echo "    Ruta extraída: ${BASH_REMATCH[1]}"
-            else
-              echo "    No se extrajo una ruta válida."
             fi
-          done < <(grep -Eo 'cy\.fixture(["'"'"'][^"'"'"']+["'"'"'])' "$resolved_file")
+          done < "$resolved_file"
         done < resolved_files.txt
     - name: Show resolved files content
       run: |
