@@ -123,8 +123,8 @@ jobs:
             match($0, /cy\.fixture(["'"'"']([^"'"'"']+)["'"'"'])/, matches)
             if (matches[1] != "") {
               # Imprimir la ruta extraída
-              print "Ruta extraída: "
-              print "    " matches[1]
+              echo "Ruta extraída: "
+              echo "     $matches[1]"
             }
           }' "$resolved_file"
         done < resolved_files.txt
