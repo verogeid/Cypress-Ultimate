@@ -97,8 +97,8 @@ jobs:
         cat resolved_files.txt
         echo ""
 
-    # Step 4 - EXTRACT 'cy.fixture' STATEMENTS
-    - name: Step 4 - Search for 'cy.fixture' statements and store them
+    # Step 4 - EXTRACT FIXTURE STATEMENTS
+    - name: Step 4 - Extract 'cy.fixture' statements
       run: |
         echo "Searching for 'cy.fixture' statements in relevant files..."
         > fixture_statements.txt
@@ -108,8 +108,8 @@ jobs:
           grep -n "cy\.fixture" "$resolved_file" >> fixture_statements.txt
         done < resolved_files.txt
 
-    # Step 5 - REDOLVE cy.fixture STATEMENTS
-    - name: Step 5 - Extract paths from 'cy.fixture' statements
+    # Step 5 - RESOLVE FIXTURE STATEMENTS
+    - name: Step 5 - Resolve cy.fixture statements
       run: |
         echo "Extracting paths from 'cy.fixture' statements..."
         while IFS= read -r fixture_statement; do
