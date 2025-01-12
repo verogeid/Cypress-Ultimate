@@ -43,7 +43,7 @@ jobs:
           echo "Error: No se proporcionó una ruta de archivo."
           exit 1
         fi
-        echo "Archivo de prueba: $test_file"
+        echo "Archivo de prueba: ${{ env.test_file }}"
 
     - name: Generate dependency analysis
       id: analyze
