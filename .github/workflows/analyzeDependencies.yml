@@ -27,10 +27,10 @@ jobs:
       with:
         node-version: '18'
 
-    - name: Install madge
+    - name: Install dependencies
       run: |
-        npm install -g madge
-        madge --version
+        npm install madge
+        npx madge --version
 
     - name: Determine input file
       id: resolve-input
@@ -43,7 +43,7 @@ jobs:
           echo "Error: No se proporcionó una ruta de archivo."
           exit 1
         fi
-        echo "Archivo de prueba: ${{ env.test_file }}"
+        echo "Archivo de prueba: $test_file"
 
     - name: Generate dependency analysis with madge
       id: analyze
@@ -64,8 +64,8 @@ jobs:
         grep -o '"resolved":\s*"[^"]*"' dependencies.json | grep "cypress/" | sed 's/"resolved": "//g' > resolved_paths.txt
         sed -i "s|$(pwd)/||g" resolved_paths.txt
 
-        # Generar el gráfico de dependencias
-        madge "$test_file" --graph --output dependency-graph.html
+        # Generar el gráfico de dependencias en formato PNG
+        madge "$test_file" --png dependency-graph.png
 
     - name: Show resolved paths
       run: |
@@ -79,5 +79,5 @@ jobs:
         path: |
           dependencies.json
           resolved_paths.txt
-          dependency-graph.html
+          dependency-graph.png
 
