@@ -29,11 +29,8 @@ jobs:
 
     - name: Install dependencies
       run: |
-        npm install marge -g
-        export PATH=$PATH:$(npm config get prefix)/bin
-        marge --version
-
-
+        npm install marge
+        npx marge --version
 
     - name: Determine input file
       id: resolve-input
