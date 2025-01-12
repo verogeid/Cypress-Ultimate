@@ -29,7 +29,7 @@ jobs:
 
     - name: Install dependencies
       run: |
-        npm install madge
+        npm install madge --legacy-peer-deps
         npx madge --version
 
     - name: Determine input file
@@ -45,27 +45,27 @@ jobs:
         fi
         echo "Archivo de prueba: $test_file"
 
-    - name: Generate dependency analysis with madge
+    - name: Generate dependency analysis
       id: analyze
       run: |
         test_file="$test_file"
-        
+
         # Generar el análisis de dependencias
         madge "$test_file" --json > dependencies.json
         echo "Análisis de dependencias generado en dependencies.json."
-        
+
         # Verificar si el archivo contiene datos válidos
         if [ ! -s dependencies.json ]; then
           echo "Error: El archivo dependencies.json está vacío o no se generó correctamente."
           exit 1
         fi
-        
+
         # Filtrar rutas relevantes usando grep
         grep -o '"resolved":\s*"[^"]*"' dependencies.json | grep "cypress/" | sed 's/"resolved": "//g' > resolved_paths.txt
         sed -i "s|$(pwd)/||g" resolved_paths.txt
 
-        # Generar el gráfico de dependencias en formato PNG
-        madge "$test_file" --png dependency-graph.png
+        # Generar el gráfico de dependencias
+        madge "$test_file" --png --output dependency-graph.png
 
     - name: Show resolved paths
       run: |
