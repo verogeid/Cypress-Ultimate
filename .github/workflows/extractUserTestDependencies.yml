@@ -1,4 +1,4 @@
-name: Extract and Process File References
+name: Extract File References
 
 on:
   workflow_dispatch:
@@ -13,94 +13,97 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v2
+    - name: Check out repository
+      uses: actions/checkout@v2
 
-      - name: Step 1 - Read aliases from .aliases.json
-        run: |
-          echo "Leyendo los alias desde .aliases.json"
-          ALIAS_JSON=$(cat .aliases.json)
-          echo "$ALIAS_JSON" | grep -o '"@[^"]*":\s*"[^"]*"' | awk -F ': ' '{print $1, $2}' > alias_list.txt
-          echo "Alias leídos y almacenados en alias_list.txt"
+    - name: Step 1 - Read aliases from .aliases.json
+      run: |
+        echo "Leyendo los alias desde .aliases.json"
+        ALIAS_JSON=$(cat .aliases.json)
+        echo "$ALIAS_JSON" | grep -o '"@[^"]*":\s*"[^"]*"' | awk -F ': ' '{print $1, $2}' > alias_list.txt
+        echo "Alias leídos y almacenados en alias_list.txt"
+        echo ""
+        echo "Contenido inicial de alias_list.txt:"
+        cat alias_list.txt
+        echo ""
         
-      - name: Show alias list content
-        run: |
-          echo "Contenido de alias_list.txt:"
-          cat alias_list.txt
-
-      - name: Step 2 - Extract import statements
-        run: |
-          FILE_REFERENCES=$(grep -Eo 'import\s+.*\s+from\s+["'"'"'][^"'"'"']+["'"'"'];' "${{ github.event.inputs.test_file }}" || echo "")
-          echo "Referencias encontradas:"
+    - name: Step 2 - Extract import statements
+      run: |
+        echo "Leyendo las referencias de importación desde el archivo: ${{ github.event.inputs.test_file }}"
+        FILE_REFERENCES=$(grep -Eo 'import\s+.*\s+from\s+["'"'"'][^"'"'"']+["'"'"'];' "${{ github.event.inputs.test_file }}" || echo "")
+        echo "Referencias encontradas:"
+        echo "$FILE_REFERENCES"
+        echo ""
+        
+    - name: Step 3 - Process and resolve paths iteratively
+      run: |
+        echo "Iniciando la resolución de rutas..."
+        > resolved_files.txt
+        > temp_resolved_files.txt
+        echo "${{ github.event.inputs.test_file }}" >> resolved_files.txt
+        echo "${{ github.event.inputs.test_file }}" >> temp_resolved_files.txt
+        while true; do
+          current_file=$(head -n 1 temp_resolved_files.txt)
+          if [[ -z "$current_file" ]]; then
+            echo "No hay más archivos que procesar, saliendo..."
+            break
+          fi
+          echo "Leyendo archivo actual: $current_file"
+          sed -i '1d' temp_resolved_files.txt
+          FILE_REFERENCES=$(grep -Eo 'import\s+.*\s+from\s+["'"'"'][^"'"'"']+["'"'"'];' "$current_file" || echo "")
+          echo "Referencias encontradas en $current_file:"
           echo "$FILE_REFERENCES"
-
-      - name: Step 3 - Process and resolve paths from import statements
-        run: |
-          FILE_REFERENCES=$(grep -Eo 'import\s+.*\s+from\s+["'"'"'][^"'"'"']+["'"'"'];' "${{ github.event.inputs.test_file }}" || echo "")
+          echo ""
           while IFS= read -r file; do
             path=$(echo "$file" | sed -E 's/.*from\s+["'"'"']([^"'"'"']+)["'"'"'];/\1/')
-            
+            resolved_path=""
             if [[ "$path" == .* || "$path" == ..* ]]; then
-              resolved_path=$(realpath --relative-to=. "$(dirname "${{ github.event.inputs.test_file }}")/$path")
-              echo "Ruta resuelta (relativa): $resolved_path"
+              resolved_path=$(realpath --relative-to=. "$(dirname "$current_file")/$path")
             fi
-            
             if [[ "$path" == @* ]]; then
               alias_name=$(echo "$path" | cut -d'/' -f1)
               alias_subpath=$(echo "$path" | sed -E 's|^[^/]+/?||')
-              alias_base=$(grep -o '"'"$alias_name"'"[[:space:]]*:[[:space:]]*"[^"]*"' .aliases.json | awk -F ': ' '{print $2}' | tr -d '"')
+              alias_base=$(grep -o "\"$alias_name\"[[:space:]]*:[[:space:]]*\"[^\"]*\"" .aliases.json | awk -F ': ' '{print $2}' | tr -d '"')
               resolved_path="${alias_base}/$alias_subpath"
-              echo "Ruta resuelta (alias): $resolved_path"
             fi
-
+            if [[ "$resolved_path" != *.js && "$resolved_path" != *.ts ]]; then
+              if [[ -f "${resolved_path}.js" ]]; then
+                resolved_path="${resolved_path}.js"
+              elif [[ -f "${resolved_path}.ts" ]]; then
+                resolved_path="${resolved_path}.ts"
+              fi
+            fi
+            resolved_path="${resolved_path#./}"
             if [[ "$resolved_path" == cypress/* ]]; then
               echo "Archivo relevante encontrado: $resolved_path"
-              RESOLVED_FILES+="$resolved_path"$'\n'
+              if ! grep -qx "$resolved_path" resolved_files.txt; then
+                echo "$resolved_path" >> resolved_files.txt
+                echo "$resolved_path" >> temp_resolved_files.txt
+              fi
             fi
           done <<< "$FILE_REFERENCES"
-          echo "Archivos relevantes finales:"
-          echo "$RESOLVED_FILES"
-
-      - name: Show resolved files content
-        run: |
-          echo "Contenido de resolved_files.txt:"
-          echo "$RESOLVED_FILES" > resolved_files.txt
+          echo "Contenido actual de resolved_files.txt:"
           cat resolved_files.txt
-
-      - name: Step 4 - Save final results to a file
-        run: |
-          echo "$RESOLVED_FILES" > resolved_files.txt
-          echo "Rutas relevantes guardadas en resolved_files.txt"
-
-  extract-fixtures:
-    runs-on: ubuntu-latest
-    needs: extract-references
-
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v2
-
-      - name: Step 1 - Read resolved files
-        run: |
-          echo "Leyendo archivos resueltos desde resolved_files.txt"
-          if [[ ! -s resolved_files.txt ]]; then
-            echo "No hay archivos resueltos para analizar."
-            exit 0
-          fi
-
-      - name: Step 2 - Search for 'cy.fixture' statements
-        run: |
-          echo "Buscando sentencias 'cy.fixture' en los archivos relevantes..."
-          while IFS= read -r resolved_file; do
-            echo "Analizando archivo: $resolved_file"
-            awk '/cy\.fixture/ { print $0 }' "$resolved_file" | while IFS= read -r line; do
-              echo "    Línea encontrada: $line"
-              ruta=$(echo "$line" | sed -E "s/.*cy\.fixture['\"]([^'\"]+)['\"].*/\1/")
-              if [[ -n "$ruta" ]]; then
-                echo "    Ruta extraída: $ruta"
-              else
-                echo "    No se extrajo una ruta válida."
-              fi
-            done
-          done < resolved_files.txt
+          echo ""
+          echo "Contenido actual de temp_resolved_files.txt:"
+          cat temp_resolved_files.txt
+          echo ""
+        done
+        echo "Resolución de rutas completa."
+        echo "Contenido final de resolved_files.txt:"
+        cat resolved_files.txt
+        echo ""
+        
+    - name: Buscar sentencias 'cy.fixture' y extraer rutas
+      run: |
+        echo "Buscando sentencias 'cy.fixture' en los archivos relevantes..."
+        while IFS= read -r resolved_file; do
+          echo "Analizando archivo: $resolved_file"
+          grep -n "cy\.fixture" "$resolved_file" || echo "No se encontraron sentencias 'cy.fixture' en $resolved_file"
+        done < resolved_files.txt
+        
+    - name: Show resolved files content
+      run: |
+        echo "Mostrando contenido final de resolved_files.txt:"
+        cat resolved_files.txt
 
