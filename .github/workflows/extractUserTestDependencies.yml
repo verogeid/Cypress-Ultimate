@@ -106,7 +106,7 @@ jobs:
         echo "Buscando sentencias 'cy.fixture' en los archivos relevantes..."
         while IFS= read -r resolved_file; do
           echo "Analizando archivo: $resolved_file"
-          grep -n "cy\.fixture" "$resolved_file" | sed -E 's/.*cy\.fixture(["'"'"']([^"'"'"']+)["'"'"']/)\1/'
+          grep -n "cy\.fixture" "$resolved_file" | sed -E 's/.*cy\.fixture(["'"'"']([^"'"'"']+)["'"'"'])/\1/'
         done < resolved_files.txt
         
 
