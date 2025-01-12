@@ -114,17 +114,20 @@ jobs:
           # Buscar y extraer la ruta entre paréntesis de 'cy.fixture'
           awk '/cy\.fixture/ {
             # Imprimir número de línea
-            print "    Número de línea: " NR
+            echo "    Número de línea: $NR"
             
             # Imprimir la línea completa de 'cy.fixture'
-            print "Línea de encontrada: " $0
+            echo "    Línea de encontrada: $0"
             
             # Extraer la ruta entre paréntesis y mostrarla
             match($0, /cy\.fixture(["'"'"']([^"'"'"']+)["'"'"'])/, matches)
+            echo "    $matches[0]"
+            echo "    $matches[1]"
+            echo "    $matches[2]"
+         
             if (matches[1] != "") {
               # Imprimir la ruta extraída
-              echo "Ruta extraída: "
-              echo "     $matches[1]"
+              echo "    Ruta extraída: $matches[1]"
             }
           }' "$resolved_file"
         done < resolved_files.txt
