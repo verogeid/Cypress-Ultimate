@@ -97,14 +97,14 @@ jobs:
         cat resolved_files.txt
         echo ""
 
-    # Step 4 - EXTRACT 'cy.fixture' STATEMENTS
+    # Step 4 - SEARCH FOR 'cy.fixture' STATEMENTS AND STORE THEM
     - name: Step 4 - Search for 'cy.fixture' statements and store them
       run: |
         echo "Searching for 'cy.fixture' statements in relevant files..."
         > fixture_statements.txt
         while IFS= read -r resolved_file; do
           echo "Analyzing file: $resolved_file"
-          grep -n "cy\.fixture" "$resolved_file" || true  # Se asegura que no falle al no encontrar coincidencias
+          grep -n "cy\.fixture" "$resolved_file" || echo "No 'cy.fixture' found in $resolved_file"  # Ensure no failure if no matches are found
           grep -n "cy\.fixture" "$resolved_file" >> fixture_statements.txt
         done < resolved_files.txt
 
