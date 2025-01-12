@@ -27,10 +27,10 @@ jobs:
       with:
         node-version: '18'
 
-    - name: Install dependencies
+    - name: Install madge
       run: |
-        npm install marge
-        npx marge --version
+        npm install -g madge
+        madge --version
 
     - name: Determine input file
       id: resolve-input
@@ -45,18 +45,21 @@ jobs:
         fi
         echo "Archivo de prueba: ${{ env.test_file }}"
 
-    - name: Generate dependency analysis
+    - name: Generate dependency analysis with madge
       id: analyze
       run: |
         test_file="$test_file"
-
-        marge --file "$test_file" --output dependencies.json
+        
+        # Generar el análisis de dependencias
+        madge "$test_file" --json > dependencies.json
         echo "Análisis de dependencias generado en dependencies.json."
 
+        # Filtrar rutas relevantes
         cat dependencies.json | jq -r '.dependencies[] | select(.resolved | contains("cypress/")) | .resolved' > resolved_paths.txt
         sed -i "s|$(pwd)/||g" resolved_paths.txt
 
-        marge --file "$test_file" --graph --output dependency-graph.html
+        # Generar el gráfico de dependencias
+        madge "$test_file" --graph --output dependency-graph.html
 
     - name: Show resolved paths
       run: |
