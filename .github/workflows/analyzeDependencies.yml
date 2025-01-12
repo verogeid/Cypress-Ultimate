@@ -6,7 +6,7 @@ on:
       test_file:
         description: 'Ruta del archivo de prueba en TypeScript'
         required: false
-        default: ''
+        default: 'cypress/e2e/Tests/API/Cards/GX3-5811-boardMembers.api.cy.ts'
 
   workflow_call:
     inputs:
