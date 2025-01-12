@@ -104,8 +104,11 @@ jobs:
         > fixture_statements.txt
         while IFS= read -r resolved_file; do
           echo "Analyzing file: $resolved_file"
-          grep -n "cy\.fixture" "$resolved_file" || echo "No 'cy.fixture' found in $resolved_file"  # Ensure no failure if no matches are found
-          grep -n "cy\.fixture" "$resolved_file" >> fixture_statements.txt
+          # Asegurarse de que no se falle si no se encuentran coincidencias
+          fixture_lines=$(grep -n "cy\.fixture" "$resolved_file" || echo "No matches found")
+          if [[ "$fixture_lines" != "No matches found" ]]; then
+            echo "$fixture_lines" >> fixture_statements.txt
+          fi
         done < resolved_files.txt
 
     # Step 5 - EXTRACT PATHS FROM 'cy.fixture' STATEMENTS
