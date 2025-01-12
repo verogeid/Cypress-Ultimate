@@ -1,4 +1,4 @@
-name: Extract File References
+name: Extract File References and Fixture Paths
 
 on:
   workflow_dispatch:
@@ -89,7 +89,7 @@ jobs:
             print "    Línea encontrada: " $0
             
             # Extraer la ruta entre paréntesis y mostrarla
-            match($0, /cy\.fixture\s*(\s*["'"'"']([^'"'"']+)["'"'"']\s*)/, matches)
+            match($0, /cy\.fixture\s*["'"'"']([^'"'"']+)["'"'"']/, matches)
             if (matches[1] != "") {
               # Imprimir la ruta extraída
               print "    Ruta extraída: " matches[1]
