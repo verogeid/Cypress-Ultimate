@@ -27,6 +27,7 @@ jobs:
         cat alias_list.txt
         echo ""
         
+
     - name: Step 2 - Extract import statements
       run: |
         echo "Leyendo las referencias de importación desde el archivo: ${{ github.event.inputs.test_file }}"
@@ -35,6 +36,7 @@ jobs:
         echo "$FILE_REFERENCES"
         echo ""
         
+
     - name: Step 3 - Process and resolve paths iteratively
       run: |
         echo "Iniciando la resolución de rutas..."
@@ -104,30 +106,32 @@ jobs:
         echo "Contenido final de resolved_files.txt:"
         cat resolved_files.txt
         echo ""
-    - name: Buscar sentencias 'cy.fixture' y extraer rutas
+
+
+    - name: Spep 4 - Buscar sentencias 'cy.fixture' y extraer rutas
       run: |
         echo "Buscando sentencias 'cy.fixture' en los archivos relevantes..."
         while IFS= read -r resolved_file; do
           echo "Analizando archivo: $resolved_file"
-          # Buscar y extraer la ruta entre paréntesis de 'cy.fixture'
+          # Buscar sentencias 'cy.fixture' en el archivo
           awk '/cy\.fixture/ {
             # Imprimir número de línea
             print "    Número de línea: " NR
-            
-            # Imprimir la línea completa de 'cy.fixture'
-            print "    Línea de encontrada: " $0
-            
-            # Extraer la ruta entre paréntesis y mostrarla
-            match($0, /cy\.fixture(["'"'"']([^"'"'"']+)["'"'"'])/, matches)
-            if (matches[1] != "") {
-              # Imprimir la ruta extraída
-              print "    Ruta extraída: " matches[1]
-            } else {
-              print "    No se extrajo una ruta válida."
-            }
+            # Guardar la línea completa
+            print "    Línea encontrada: " $0
+            # Extraer la ruta de la línea usando grep
+            ruta=$(echo "$0" | grep -oE '["'"'"'][^"'"'"']+["'"'"']' | tr -d '()"'"'"')
+            if [[ -n "$ruta" ]]; then
+              echo "    Ruta extraída: $ruta"
+            else
+              echo "    No se extrajo una ruta válida."
+            fi
           }' "$resolved_file"
         done < resolved_files.txt
-    - name: Show resolved files content
+
+
+    - name: Step 5 - Show resolved files content
       run: |
         echo "Mostrando contenido final de resolved_files.txt:"
         cat resolved_files.txt
+
