@@ -100,26 +100,25 @@ jobs:
         echo ""
         
 
-    # FIXTURE - Buscar sentencias 'cy.fixture' y almacenar las sentencias
+    # FIXTURE - Buscar sentencias 'cy.fixture' y almacenar sentencias
     - name: Buscar sentencias 'cy.fixture' y almacenar sentencias
       run: |
         echo "Buscando sentencias 'cy.fixture' en los archivos relevantes..."
         > fixture_statements.txt
         while IFS= read -r resolved_file; do
           echo "Analizando archivo: $resolved_file"
-          grep -n "cy\.fixture" "$resolved_file" || echo "No se encontraron sentencias 'cy.fixture' en $resolved_file"
+          grep -n "cy\.fixture" "$resolved_file" || true
           grep -n "cy\.fixture" "$resolved_file" >> fixture_statements.txt
         done < resolved_files.txt
-        
 
-    # FIXTURE - Extraer rutas de los fixtures desde las sentencias
-    - name: Extraer rutas de los fixtures desde las sentencias
+
+    # FIXTURE - Extraer rutas de las sentencias 'cy.fixture'
+    - name: Extraer rutas de 'cy.fixture'
       run: |
-        echo "Extrayendo rutas de los fixtures desde las sentencias..."
-        while IFS= read -r statement; do
-          # Extraer la ruta de la sentencia de fixture
-          fixture_path=$(echo "$statement" | sed -E 's/.*cy\.fixture(["'"'"']([^"'"'"']+)["'"'"'])/\1/')
-          echo "Ruta de fixture encontrada: $fixture_path"
+        echo "Extrayendo rutas de las sentencias 'cy.fixture'..."
+        while IFS= read -r fixture_statement; do
+          echo "Analizando sentencia: $fixture_statement"
+          echo "$fixture_statement" | sed -E 's/.*cy\.fixture(["'"'"']([^"'"'"']+)["'"'"'])/\1/'
         done < fixture_statements.txt
         
 
