@@ -104,7 +104,6 @@ jobs:
         echo "Contenido final de resolved_files.txt:"
         cat resolved_files.txt
         echo ""
-        
     - name: Buscar sentencias 'cy.fixture' y extraer rutas
       run: |
         echo "Buscando sentencias 'cy.fixture' en los archivos relevantes..."
@@ -112,15 +111,15 @@ jobs:
           echo "Analizando archivo: $resolved_file"
           # Buscar y extraer la ruta entre paréntesis de 'cy.fixture'
           while IFS= read -r cy_fixture_line; do
-            echo "    Línea de cy.fixture encontrada: $cy_fixture_line"
-            if [[ "$cy_fixture_line" =~ cy\.fixture(["'"'"']([^"'"'"']+)["'"'"']) ]]; then
+            # Asegurarnos de que estamos buscando solo la sentencia cy.fixture
+            if [[ "$cy_fixture_line" =~ cy\.fixture["'"'"']([^"'"'"']+)["'"'"'] ]]; then
+              echo "    Línea de cy.fixture encontrada: $cy_fixture_line"
               echo "    Ruta extraída: ${BASH_REMATCH[1]}"
             else
               echo "    No se extrajo una ruta válida."
             fi
-          done < "$resolved_file"
+          done < <(grep -Eo 'cy\.fixture(["'"'"'][^"'"'"']+["'"'"'])' "$resolved_file")
         done < resolved_files.txt
-
     - name: Show resolved files content
       run: |
         echo "Mostrando contenido final de resolved_files.txt:"
