@@ -116,7 +116,7 @@ jobs:
         echo "Extracting paths from 'cy.fixture' statements..."
         while IFS= read -r fixture_statement; do
           echo "Analyzing statement: $fixture_statement"
-          echo "$fixture_statement" | sed -E "s/.*cy\.fixture['\"]([^'\"]+)['\"].*/\1/"
+          echo "$fixture_statement" | sed -E "s/.*cy\.fixture(['\"]([^'\"]+)['\"]).*/\1/"
         done < fixture_statements.txt
 
     # Step 6 - FINAL CONTENT
