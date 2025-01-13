@@ -58,7 +58,7 @@ jobs:
           echo "$FILE_REFERENCES"
           echo ""
           while IFS= read -r file; do
-            path=$(echo "$file" | sed -E 's/.*from\s+["'"'"']([^"'"'"']+)["'"'"'];/\1/')
+            path=$(echo "$file" | sed -E 's/.*from\s+["'"'"']([^'"'"']+)["'"'"'];/\1/')
             resolved_path=""
             if [[ "$path" == .* || "$path" == ..* ]]; then
               resolved_path=$(realpath --relative-to=. "$(dirname "$current_file")/$path")
@@ -104,10 +104,8 @@ jobs:
         > fixture_statements.txt
         while IFS= read -r resolved_file; do
           echo "Analyzing file: $resolved_file"
-          fixture_lines=$(grep -n "cy\.fixture" "$resolved_file" || echo "No matches found")
-          if [[ "$fixture_lines" != "No matches found" ]]; then
-            echo "$fixture_lines" >> fixture_statements.txt
-          fi
+          grep -n "cy\.fixture" "$resolved_file" || true
+          grep -n "cy\.fixture" "$resolved_file" >> fixture_statements.txt
         done < resolved_files.txt
 
     # Step 5 - EXTRACT PATHS FROM 'cy.fixture' STATEMENTS
