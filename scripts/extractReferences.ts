@@ -49,7 +49,7 @@ const extractFixtures = (fileReferences: string[]) => {
 
   fileReferences.forEach((file) => {
     const fileContent = fs.readFileSync(file, 'utf-8');
-    const fixtureRegex = /cy\.fixture['"]([^'"]+)['"]/g;
+    const fixtureRegex = /cy\.fixture\(['"]([^'"]+)['"]\)/g;
     let match;
 
     while ((match = fixtureRegex.exec(fileContent)) !== null) {
