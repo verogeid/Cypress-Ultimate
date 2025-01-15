@@ -1,23 +1,19 @@
 import fs from 'fs';
 import path from 'path';
 
-// Función para leer el archivo .aliases.json y convertirlo a un objeto
-const readAliases = (aliasFilePath: string) => {
-  const aliasData = fs.readFileSync(aliasFilePath, 'utf-8');
-  console.log('Alias leídos:', aliasData);
-  return JSON.parse(aliasData);
-};
-
-// Función principal para extraer las referencias de importación
-export const addImportReferences = (fileContent: string, aliases: Record<string, string>) => {
+// Función para extraer las rutas de importación
+const extractImports = (testFile: string, aliases: Record<string, string>, repoBasePath: string) => {
   const fileReferences: string[] = [];
+
+  // Leer el contenido del archivo de prueba
+  const testFilePath = path.resolve(testFile);
+  const fileContent = fs.readFileSync(testFilePath, 'utf-8');
 
   // Buscar todas las importaciones en el archivo
   const importPattern = /import\s+.*\s+from\s+['"](.*)['"]/g;
   let match;
   while ((match = importPattern.exec(fileContent)) !== null) {
     let importPath = match[1];
-    console.log(`Importación encontrada: ${importPath}`);
 
     // Resolver alias
     if (importPath.startsWith('@')) {
@@ -25,36 +21,75 @@ export const addImportReferences = (fileContent: string, aliases: Record<string,
       const aliasBase = aliases[alias];
       if (aliasBase) {
         importPath = importPath.replace(alias, aliasBase);
-        console.log(`Alias resuelto: ${importPath}`);
       } else {
-        console.log(`Alias no encontrado para: ${alias}`);
+        console.log(`Alias no encontrado: ${alias}`);
       }
     }
 
-    // Agregar la referencia al array
-    fileReferences.push(importPath);
+    // Intentar con .ts, .js, o sin extensión
+    const pathsToTry = [
+      `${importPath}.ts`,  // Intentamos con .ts
+      `${importPath}.js`,  // Intentamos con .js
+      importPath,          // Intentamos sin extensión
+    ];
+
+    let foundPath = null;
+    for (const candidate of pathsToTry) {
+      // Ajustar ruta a la estructura relativa al repositorio
+      if (candidate.startsWith('cypress/')) {
+        const relativePath = path.relative(repoBasePath, path.resolve(candidate));
+        if (checkFileExistence(relativePath, repoBasePath)) {
+          foundPath = relativePath;
+          break;
+        }
+      }
+    }
+
+    if (foundPath) {
+      fileReferences.push(foundPath);
+    } else {
+      console.log(`No se encontró el archivo para la ruta: ${importPath}`);
+    }
   }
 
-  console.log('Referencias de importación:', fileReferences);
   return fileReferences;
 };
 
-// Función para extraer las referencias desde el archivo de prueba
-export const extractReferences = (testFile: string, aliasFilePath: string) => {
-  const aliases = readAliases(aliasFilePath);
-  const testFilePath = path.resolve(testFile);
-  console.log(`Leyendo archivo de prueba: ${testFilePath}`);
+// Función para agregar rutas relevantes de importación
+const addImportPath = (importPath: string, allFiles: Set<string>, references: Set<string>, notFound: Set<string>, repoBasePath: string) => {
+  let foundPath = null;
 
-  const fileContent = fs.readFileSync(testFilePath, 'utf-8');
-  const fileReferences = addImportReferences(fileContent, aliases);
+  // Intentamos con .ts, .js, o sin extensión
+  const pathsToTry = [
+    `${importPath}.ts`,  // Intentamos con .ts
+    `${importPath}.js`,  // Intentamos con .js
+    importPath,          // Intentamos sin extensión
+  ];
 
-  return fileReferences;
+  for (const candidate of pathsToTry) {
+    const resolvedPath = checkFileExistence(candidate, repoBasePath);
+    if (resolvedPath && !allFiles.has(resolvedPath)) {
+      references.add(resolvedPath);
+      allFiles.add(resolvedPath);
+      foundPath = resolvedPath;
+      break;
+    }
+  }
+
+  if (!foundPath) {
+    notFound.add(importPath);
+    console.log(`No se encontró el archivo para la ruta: ${importPath}`);
+  }
 };
 
-// Ejecución principal
-const testFile = process.argv[2];  // Ruta del archivo de prueba
-const aliasFilePath = '.aliases.json';  // Ruta del archivo de aliases
+// Función para verificar si un archivo existe
+const checkFileExistence = (importedPath: string, repoBasePath: string): string | null => {
+  const filePath = path.resolve(repoBasePath, importedPath);
+  if (fs.existsSync(filePath)) {
+    return filePath;
+  }
+  return null;
+};
 
-const fileReferences = extractReferences(testFile, aliasFilePath);
-console.log('Referencias extraídas:', fileReferences);
+export { extractImports, addImportPath };
 
