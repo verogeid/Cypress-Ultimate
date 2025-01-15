@@ -1,4 +1,4 @@
-name: Extract File References
+name: Run TypeScript Script
 
 on:
   workflow_dispatch:
@@ -9,35 +9,23 @@ on:
         default: 'cypress/e2e/Tests/API/Cards/GX3-5811-boardMembers.api.cy.ts'
 
 jobs:
-  extract-references:
+  run-typescript-script:
     runs-on: ubuntu-latest
 
     steps:
     - name: Check out repository
       uses: actions/checkout@v2
 
-    - name: 🍙 Setup Bun
-      uses: oven-sh/setup-bun@v2
-      with:
-        bun-version: latest
+    - name: Ver el directorio actual
+      run: pwd
 
-    - name: 🧬 Install Dependencies
-      run: bun install
-
-    - name: 📜 Execute Extract References Script
-      id: run-script
+    - name: Ejecuta el script de extracción de referencias en TypeScript
       run: |
-        # Ejecuta el script de extracción de referencias en TypeScript
+        echo "Ejecutando script de extracción de referencias..."
         bun run scripts/extractReferences.ts "${{ github.event.inputs.test_file }}" > extracted_references.json
 
-        # Mostrar el contenido de las referencias extraídas
+    - name: Mostrar el contenido de las referencias extraídas
+      run: |
         cat extracted_references.json
         echo "Referencias extraídas completadas"
-
-    - name: 📦 Upload Extracted References
-      uses: actions/upload-artifact@v4
-      with:
-        name: extracted-references
-        path: extracted_references.json
-        retention-days: 7
 
