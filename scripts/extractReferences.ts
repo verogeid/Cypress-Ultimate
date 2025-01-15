@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 
-// Verifica la existencia de archivo
+// Verifica la existencia de archivo con diferentes extensiones
 const checkFileExistence = (filePath: string): string | null => {
   const extensions = ['.ts', '.js', ''];
   for (const ext of extensions) {
@@ -17,7 +17,7 @@ const checkFileExistence = (filePath: string): string | null => {
 // Agregar rutas de las importaciones
 const addImportReferences = (filePath: string, references: Set<string>, allFiles: Set<string>) => {
   const fileContent = fs.readFileSync(filePath, 'utf-8');
-  
+
   const importRegex = /import\s+.*\s+from\s+['"]([^'"]+)['"]/g;
   let match;
   while ((match = importRegex.exec(fileContent)) !== null) {
@@ -30,7 +30,8 @@ const addImportReferences = (filePath: string, references: Set<string>, allFiles
       importedPath = importedPath.replace('@', 'cypress/');
     }
 
-    importedPath = checkFileExistence(importedPath) || importedPath;
+    // Comprobar la existencia del archivo importado, añadiendo extensión si no tiene
+    importedPath = checkFileExistence(importedPath) || checkFileExistence(importedPath + '.ts') || checkFileExistence(importedPath + '.js');
 
     if (importedPath && !allFiles.has(importedPath)) {
       references.add(importedPath);
@@ -42,7 +43,7 @@ const addImportReferences = (filePath: string, references: Set<string>, allFiles
 // Agregar rutas de las fixtures
 const addFixtureReferences = (filePath: string, references: Set<string>, allFiles: Set<string>) => {
   const fileContent = fs.readFileSync(filePath, 'utf-8');
-  
+
   const fixtureRegex = /cy\.fixture\(['"]([^'"]+)['"]\)/g;
   let match;
   while ((match = fixtureRegex.exec(fileContent)) !== null) {
@@ -89,6 +90,7 @@ const extractReferences = (testFile: string): void => {
   fs.writeFileSync('extracted_references.json', JSON.stringify({ fileReferences: referencesList }, null, 2));
 };
 
+// Obtener el archivo de pruebas desde el input de la ejecución
 const testRunInput = process.argv[2];
 
 extractReferences(testRunInput);
