@@ -1,95 +1,59 @@
 import fs from 'fs';
 import path from 'path';
 
-// Función para extraer las rutas de importación
-const extractImports = (testFile: string, aliases: Record<string, string>, repoBasePath: string) => {
-  const fileReferences: string[] = [];
-
+// Función para agregar referencias de importación desde un archivo de prueba
+export const addImportReferences = (
+  testFile: string,
+  fileReferences: Set<string>,
+  allFiles: Set<string>,
+  notFound: Set<string>,
+  aliases: Record<string, string>
+) => {
   // Leer el contenido del archivo de prueba
-  const testFilePath = path.resolve(testFile);
-  const fileContent = fs.readFileSync(testFilePath, 'utf-8');
+  const fileContent = fs.readFileSync(testFile, 'utf-8');
 
-  // Buscar todas las importaciones en el archivo
-  const importPattern = /import\s+.*\s+from\s+['"](.*)['"]/g;
+  // Extraer las rutas de las sentencias import
+  const importRegex = /import\s+.*\s+from\s+['"]([^'"]+)['"]/g;
   let match;
-  while ((match = importPattern.exec(fileContent)) !== null) {
+
+  while ((match = importRegex.exec(fileContent)) !== null) {
     let importPath = match[1];
+    let resolvedPath: string | null = null;
 
     // Resolver alias
     if (importPath.startsWith('@')) {
       const alias = importPath.split('/')[0];
       const aliasBase = aliases[alias];
       if (aliasBase) {
-        importPath = importPath.replace(alias, aliasBase);
-      } else {
-        console.log(`Alias no encontrado: ${alias}`);
+        const relativePath = importPath.replace(alias, aliasBase);
+        resolvedPath = path.resolve(path.dirname(testFile), relativePath);
+      }
+    } else if (importPath.startsWith('.') || importPath.startsWith('/')) {
+      // Resolver rutas relativas o absolutas
+      resolvedPath = path.resolve(path.dirname(testFile), importPath);
+    }
+
+    // Probar con .ts, .js y la ruta directa
+    if (resolvedPath) {
+      if (fs.existsSync(`${resolvedPath}.ts`)) {
+        resolvedPath = `${resolvedPath}.ts`;
+      } else if (fs.existsSync(`${resolvedPath}.js`)) {
+        resolvedPath = `${resolvedPath}.js`;
+      } else if (!fs.existsSync(resolvedPath)) {
+        notFound.add(resolvedPath);
+        continue;
+      }
+
+      // Convertir a ruta relativa al repositorio
+      const repoRelativePath = path.relative(process.cwd(), resolvedPath);
+      if (!fileReferences.has(repoRelativePath)) {
+        fileReferences.add(repoRelativePath);
+        allFiles.add(repoRelativePath);
+
+        // Llamar recursivamente para analizar el siguiente archivo
+        addImportReferences(resolvedPath, fileReferences, allFiles, notFound, aliases);
       }
     }
-
-    // Intentar con .ts, .js, o sin extensión
-    const pathsToTry = [
-      `${importPath}.ts`,  // Intentamos con .ts
-      `${importPath}.js`,  // Intentamos con .js
-      importPath,          // Intentamos sin extensión
-    ];
-
-    let foundPath = null;
-    for (const candidate of pathsToTry) {
-      // Ajustar ruta a la estructura relativa al repositorio
-      if (candidate.startsWith('cypress/')) {
-        const relativePath = path.relative(repoBasePath, path.resolve(candidate));
-        if (checkFileExistence(relativePath, repoBasePath)) {
-          foundPath = relativePath;
-          break;
-        }
-      }
-    }
-
-    if (foundPath) {
-      fileReferences.push(foundPath);
-    } else {
-      console.log(`No se encontró el archivo para la ruta: ${importPath}`);
-    }
-  }
-
-  return fileReferences;
-};
-
-// Función para agregar rutas relevantes de importación
-const addImportPath = (importPath: string, allFiles: Set<string>, references: Set<string>, notFound: Set<string>, repoBasePath: string) => {
-  let foundPath = null;
-
-  // Intentamos con .ts, .js, o sin extensión
-  const pathsToTry = [
-    `${importPath}.ts`,  // Intentamos con .ts
-    `${importPath}.js`,  // Intentamos con .js
-    importPath,          // Intentamos sin extensión
-  ];
-
-  for (const candidate of pathsToTry) {
-    const resolvedPath = checkFileExistence(candidate, repoBasePath);
-    if (resolvedPath && !allFiles.has(resolvedPath)) {
-      references.add(resolvedPath);
-      allFiles.add(resolvedPath);
-      foundPath = resolvedPath;
-      break;
-    }
-  }
-
-  if (!foundPath) {
-    notFound.add(importPath);
-    console.log(`No se encontró el archivo para la ruta: ${importPath}`);
   }
 };
-
-// Función para verificar si un archivo existe
-const checkFileExistence = (importedPath: string, repoBasePath: string): string | null => {
-  const filePath = path.resolve(repoBasePath, importedPath);
-  if (fs.existsSync(filePath)) {
-    return filePath;
-  }
-  return null;
-};
-
-export { extractImports, addImportPath };
 
