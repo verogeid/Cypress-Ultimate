@@ -1,4 +1,6 @@
-name: Extracción de referencias con TypeScript 
+Aquí tienes el workflow actualizado, asumiendo que el archivo .aliases.json siempre está en la carpeta raíz:
+
+name: Extract References
 
 on:
   workflow_dispatch:
@@ -16,29 +18,26 @@ jobs:
     - name: Check out repository
       uses: actions/checkout@v2
 
-    - name: Cache node_modules
-      uses: actions/cache@v2
+    - name: Set up Bun
+      uses: "jarvis-io/setup-bun@v1"
       with:
-        path: |
-          ~/.bun
-          node_modules
-        key: ${{ runner.os }}-node-${{ hashFiles('**/bun.lockb') }}
-        restore-keys: |
-          ${{ runner.os }}-node-
+        bun-version: "latest"
 
-    - name: Install dependencies with Bun
+    - name: Install dependencies
       run: |
-        curl -fsSL https://bun.sh/install | bash
-        export PATH="$HOME/.bun/bin:$PATH"
-        echo "$HOME/.bun/bin" >> $GITHUB_PATH  # Añadir al PATH global de GitHub Actions
         bun install
 
-    - name: Ejecutar el script de extracción de referencias en TypeScript
+    - name: Run extractReferences script
       run: |
-        bun run scripts/extractReferences.ts "${{ github.event.inputs.test_file }}" > extracted_references.json
+        bun run scripts/extractReferences.ts "${{ github.event.inputs.test_file }}" ".aliases.json" > extracted_references.json
 
-    - name: Mostrar el contenido de las referencias extraídas
+    - name: Show extracted references log
       run: |
-        cat extracted_references.json
-        echo "Referencias extraídas completadas"
+        echo "Contenido de extracted_references.json:"
+        cat extracted_references.json || echo "Archivo no encontrado"
+        
+    - name: Check log file content
+      run: |
+        echo "Contenido del log:"
+        cat log.txt || echo "log.txt no encontrado"
 
