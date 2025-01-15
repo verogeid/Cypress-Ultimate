@@ -1,4 +1,4 @@
-import fs from 'fs';
+limport fs from 'fs';
 import path from 'path';
 
 // Verifica la existencia de archivo con extensiones posibles
@@ -14,7 +14,7 @@ const checkFileExistence = (filePath: string): string | null => {
 };
 
 // Agregar rutas de las importaciones
-export const addImportReferences = (filePath: string, references: Set<string>, allFiles: Set<string>) => {
+export const addImportReferences = (filePath: string, references: Set<string>, allFiles: Set<string>, notFound: Set<string>) => {
   const fileContent = fs.readFileSync(filePath, 'utf-8');
   const importRegex = /import\s+.*\s+from\s+['"]([^'"]+)['"]/g;
   let match;
@@ -34,6 +34,8 @@ export const addImportReferences = (filePath: string, references: Set<string>, a
     if (resolvedPath && !allFiles.has(resolvedPath)) {
       references.add(resolvedPath);
       allFiles.add(resolvedPath);
+    } else {
+      notFound.add(importedPath);
     }
   }
 };
