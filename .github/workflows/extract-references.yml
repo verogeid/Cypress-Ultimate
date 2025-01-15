@@ -30,6 +30,8 @@ jobs:
       run: |
         curl -fsSL https://bun.sh/install | bash
         export PATH="$HOME/.bun/bin:$PATH"
+        echo "Verificando instalación de Bun"
+        bun --version  # Añadido para comprobar si bun está correctamente instalado
         bun install
 
     - name: Ejecutar el script de extracción de referencias en TypeScript
