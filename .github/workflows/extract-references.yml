@@ -22,5 +22,5 @@ jobs:
 
       - name: Run TypeScript script
         run: |
-          npx ts-node scripts/extract-references.ts ${{ github.event.inputs.test_file }}
+          npx ts-node scripts/extractReferences.ts ${{ github.event.inputs.test_file }}
 
