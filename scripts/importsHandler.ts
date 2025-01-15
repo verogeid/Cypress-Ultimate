@@ -9,7 +9,7 @@ const readAliases = (aliasFilePath: string) => {
 };
 
 // Función principal para extraer las referencias de importación
-const addImportReferences = (fileContent: string, aliases: Record<string, string>) => {
+export const addImportReferences = (fileContent: string, aliases: Record<string, string>) => {
   const fileReferences: string[] = [];
 
   // Buscar todas las importaciones en el archivo
@@ -40,7 +40,7 @@ const addImportReferences = (fileContent: string, aliases: Record<string, string
 };
 
 // Función para extraer las referencias desde el archivo de prueba
-const extractReferences = (testFile: string, aliasFilePath: string) => {
+export const extractReferences = (testFile: string, aliasFilePath: string) => {
   const aliases = readAliases(aliasFilePath);
   const testFilePath = path.resolve(testFile);
   console.log(`Leyendo archivo de prueba: ${testFilePath}`);
@@ -57,3 +57,4 @@ const aliasFilePath = '.aliases.json';  // Ruta del archivo de aliases
 
 const fileReferences = extractReferences(testFile, aliasFilePath);
 console.log('Referencias extraídas:', fileReferences);
+
