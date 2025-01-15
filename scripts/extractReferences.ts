@@ -1,5 +1,3 @@
-Aquí tienes el código modificado para usar el archivo fixturesHandler.ts y el código relevante para la extracción de las importaciones de importsHandler.ts, adaptado a tu solicitud:
-
 import fs from 'fs';
 import path from 'path';
 import { addImportReferences } from './importsHandler';
@@ -55,6 +53,3 @@ fs.writeFileSync('extracted_references.json', JSON.stringify(result, null, 2));
 
 console.log('Referencias extraídas:', fileReferences);
 console.log('Referencias no encontradas:', notFound);
-
-Este código usa addImportReferences y addFixtureReferences de los respectivos archivos importsHandler.ts y fixturesHandler.ts, manteniendo la estructura que quieres. Además, guarda tanto las rutas de archivo encontradas como las que no se pudieron encontrar en el archivo JSON extracted_references.json.
-
