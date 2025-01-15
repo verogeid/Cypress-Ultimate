@@ -51,7 +51,7 @@ function resolvePaths(imports: string[], aliases: Record<string, string>, baseDi
 
 // Paso 4: Buscar `cy.fixture`
 function findFixtures(files: string[]): string[] {
-  const fixtureRegex = /cy\.fixture["']([^"']+)["']/g;
+  const fixtureRegex = /cy\.fixture\(["']([^"']+)["']\)/g;
   const fixtures: string[] = [];
 
   for (const file of files) {
