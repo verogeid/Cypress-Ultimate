@@ -1,11 +1,12 @@
 import fs from 'fs';
 import path from 'path';
 
-// Función que verifica la existencia de un archivo con diferentes extensiones
+// Verifica la existencia de archivo
 const checkFileExistence = (filePath: string): string | null => {
-  const extensions = ['.ts', '.js', '']; // Comprobar .ts, .js y sin extensión
+  const extensions = ['.ts', '.js', ''];
   for (const ext of extensions) {
     const fullPath = path.resolve(filePath + ext);
+    console.log(`Comprobando existencia del archivo: ${fullPath}`); // Depuración: ver la ruta completa
     if (fs.existsSync(fullPath)) {
       return fullPath;
     }
@@ -13,7 +14,7 @@ const checkFileExistence = (filePath: string): string | null => {
   return null;
 };
 
-// Función para agregar las rutas de las importaciones
+// Agregar rutas de las importaciones
 const addImportReferences = (filePath: string, references: Set<string>, allFiles: Set<string>) => {
   const fileContent = fs.readFileSync(filePath, 'utf-8');
   
@@ -22,7 +23,7 @@ const addImportReferences = (filePath: string, references: Set<string>, allFiles
   while ((match = importRegex.exec(fileContent)) !== null) {
     let importedPath = match[1];
 
-    // Si es una ruta relativa, resolvemos en relación con el archivo actual
+    // Resolver rutas relativas
     if (importedPath.startsWith('.')) {
       importedPath = path.resolve(path.dirname(filePath), importedPath);
     } else if (importedPath.startsWith('@')) {
@@ -38,16 +39,16 @@ const addImportReferences = (filePath: string, references: Set<string>, allFiles
   }
 };
 
-// Función para agregar las rutas de las fixtures
+// Agregar rutas de las fixtures
 const addFixtureReferences = (filePath: string, references: Set<string>, allFiles: Set<string>) => {
   const fileContent = fs.readFileSync(filePath, 'utf-8');
   
-  const fixtureRegex = /cy\.fixture['"]([^'"]+)['"]/g;
+  const fixtureRegex = /cy\.fixture\(['"]([^'"]+)['"]\)/g;
   let match;
   while ((match = fixtureRegex.exec(fileContent)) !== null) {
     let fixturePath = match[1];
 
-    // Asegurar que las rutas de fixtures comiencen con cypress/fixtures y tengan la extensión .json
+    // Rutas de fixtures con cypress/fixtures y extensión .json
     if (!fixturePath.startsWith('cypress/fixtures/')) {
       fixturePath = 'cypress/fixtures/' + fixturePath;
     }
@@ -60,22 +61,22 @@ const addFixtureReferences = (filePath: string, references: Set<string>, allFile
   }
 };
 
-// Función principal para leer y extraer las referencias
+// Leer y extraer las referencias
 const extractReferences = (testFile: string): void => {
   const references: Set<string> = new Set();
   const allFiles: Set<string> = new Set();
 
-  // Primero, procesamos el archivo de pruebas inicial
+  // Archivo de pruebas inicial
   const resolvedTestFile = checkFileExistence(testFile);
   if (resolvedTestFile) {
     references.add(resolvedTestFile);
     allFiles.add(resolvedTestFile);
 
-    // Buscar importaciones y fixtures en el archivo de pruebas
+    // Buscar import y fixtures en el archivo de pruebas
     addImportReferences(resolvedTestFile, references, allFiles);
     addFixtureReferences(resolvedTestFile, references, allFiles);
 
-    // Iterar sobre las referencias encontradas para buscar más importaciones y fixtures
+    // Iterar sobre referencias encontradas
     const filesToProcess = Array.from(references);
     for (const file of filesToProcess) {
       addImportReferences(file, references, allFiles);
@@ -83,7 +84,7 @@ const extractReferences = (testFile: string): void => {
     }
   }
 
-  // Guardamos las referencias en un archivo JSON
+  // Guardamos referencias en archivo JSON
   const referencesList = Array.from(references);
   fs.writeFileSync('extracted_references.json', JSON.stringify({ fileReferences: referencesList }, null, 2));
 };
