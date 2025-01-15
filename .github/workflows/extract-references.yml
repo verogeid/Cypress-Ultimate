@@ -1,4 +1,4 @@
-name: Extracción de referencias con TypeScript
+name: Extracción de referencias con TypeScript 
 
 on:
   workflow_dispatch:
@@ -30,11 +30,11 @@ jobs:
       run: |
         curl -fsSL https://bun.sh/install | bash
         export PATH="$HOME/.bun/bin:$PATH"
+        echo "$HOME/.bun/bin" >> $GITHUB_PATH  # Añadir al PATH global de GitHub Actions
         bun install
 
     - name: Ejecutar el script de extracción de referencias en TypeScript
       run: |
-        source $HOME/.bashrc  # Cargar el PATH actualizado
         bun run scripts/extractReferences.ts "${{ github.event.inputs.test_file }}" > extracted_references.json
 
     - name: Mostrar el contenido de las referencias extraídas
