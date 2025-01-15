@@ -1,4 +1,4 @@
-name: Run TypeScript Script extractReferences
+name: Run Script extractReferences.ts
 
 on:
   workflow_dispatch:
@@ -22,5 +22,5 @@ jobs:
 
       - name: Run TypeScript script
         run: |
-          npx ts-node scripts/extractReferences.ts ${{ github.event.inputs.test_file }}
+          npx ts-node --loader ts-node/esm scripts/extractReferences.ts ${{ github.event.inputs.test_file }}
 
