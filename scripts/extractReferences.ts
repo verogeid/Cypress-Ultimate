@@ -1,85 +1,94 @@
 import fs from 'fs';
 import path from 'path';
 
-// Ruta del archivo de pruebas proporcionada como input
-const testFilePath = process.argv[2];  // Aquí es donde tomaríamos el valor de la entrada 'test_run' en el workflow
-
-// Verificar si el archivo de pruebas existe
-if (!fs.existsSync(testFilePath)) {
-  console.error(`Archivo de pruebas no encontrado: ${testFilePath}`);
-  process.exit(1);  // Salir si el archivo no se encuentra
-}
-
-// Guardar la ruta del archivo de pruebas en las referencias
-let allReferences: string[] = [testFilePath];  // Inicializamos con el archivo de pruebas
-
-// Función para comprobar la existencia de archivos con diferentes extensiones
-const checkFileExists = (filePath: string): string | null => {
-  const extensions = ['.ts', '.js', ''];
+// Función que verifica la existencia de un archivo con diferentes extensiones
+const checkFileExistence = (filePath: string): string | null => {
+  const extensions = ['.ts', '.js', '']; // Comprobar .ts, .js y sin extensión
   for (const ext of extensions) {
-    const fileWithExt = ext ? filePath + ext : filePath;
-    if (fs.existsSync(fileWithExt)) {
-      return fileWithExt;
+    const fullPath = path.resolve(filePath + ext);
+    if (fs.existsSync(fullPath)) {
+      return fullPath;
     }
   }
   return null;
 };
 
-// Función recursiva para procesar el archivo de pruebas y las importaciones
-const processImportsAndFixtures = (filePath: string): void => {
+// Función para agregar las rutas de las importaciones
+const addImportReferences = (filePath: string, references: Set<string>, allFiles: Set<string>) => {
   const fileContent = fs.readFileSync(filePath, 'utf-8');
-
-  // Buscar todas las sentencias de import
-  const importRegex = /import\s+.*\s+from\s+['"](.*)['"]/g;
+  
+  const importRegex = /import\s+.*\s+from\s+['"]([^'"]+)['"]/g;
   let match;
   while ((match = importRegex.exec(fileContent)) !== null) {
-    let importPath = match[1];
-    
-    // Comprobar si es una ruta relativa y convertirla a la ruta de cypress/
-    if (importPath.startsWith('./') || importPath.startsWith('../')) {
-      importPath = path.resolve(path.dirname(filePath), importPath);
-    } else if (importPath.startsWith('@')) {
-      importPath = importPath.replace('@', 'cypress/'); // Aquí añadimos el prefijo cypress/ a los alias
+    let importedPath = match[1];
+
+    // Si es una ruta relativa, resolvemos en relación con el archivo actual
+    if (importedPath.startsWith('.')) {
+      importedPath = path.resolve(path.dirname(filePath), importedPath);
+    } else if (importedPath.startsWith('@')) {
+      importedPath = importedPath.replace('@', 'cypress/');
     }
 
-    // Comprobar si el archivo existe con .ts, .js o sin extensión
-    const validPath = checkFileExists(importPath);
-    if (validPath && !allReferences.includes(validPath)) {
-      allReferences.push(validPath);
-      // Llamada recursiva para procesar el archivo importado
-      processImportsAndFixtures(validPath);
-    }
-  }
+    importedPath = checkFileExistence(importedPath) || importedPath;
 
-  // Buscar todas las sentencias cy.fixture
-  const fixtureRegex = /cy\.fixture\(['"](.*)['"]\)/g;
-  while ((match = fixtureRegex.exec(fileContent)) !== null) {
-    let fixturePath = match[1];
-    
-    // Asegurarnos de que la ruta comienza con cypress/fixtures
-    if (!fixturePath.startsWith('cypress/fixtures')) {
-      fixturePath = 'cypress/fixtures/' + fixturePath;
-    }
-    
-    // Añadir la extensión .json a las rutas de fixture
-    if (!fixturePath.endsWith('.json')) {
-      fixturePath += '.json';
-    }
-
-    // Verificar si el archivo de fixture existe
-    const validFixturePath = checkFileExists(fixturePath);
-    if (validFixturePath && !allReferences.includes(validFixturePath)) {
-      allReferences.push(validFixturePath);
+    if (importedPath && !allFiles.has(importedPath)) {
+      references.add(importedPath);
+      allFiles.add(importedPath);
     }
   }
 };
 
-// Comenzamos con el archivo de pruebas
-processImportsAndFixtures(testFilePath);
+// Función para agregar las rutas de las fixtures
+const addFixtureReferences = (filePath: string, references: Set<string>, allFiles: Set<string>) => {
+  const fileContent = fs.readFileSync(filePath, 'utf-8');
+  
+  const fixtureRegex = /cy\.fixture['"]([^'"]+)['"]/g;
+  let match;
+  while ((match = fixtureRegex.exec(fileContent)) !== null) {
+    let fixturePath = match[1];
 
-// Guardar las rutas de archivos en un archivo JSON
-const result = { fileReferences: allReferences };
-fs.writeFileSync('extracted_references.json', JSON.stringify(result, null, 2));
+    // Asegurar que las rutas de fixtures comiencen con cypress/fixtures y tengan la extensión .json
+    if (!fixturePath.startsWith('cypress/fixtures/')) {
+      fixturePath = 'cypress/fixtures/' + fixturePath;
+    }
+    fixturePath = fixturePath + '.json';
 
-console.log('Referencias extraídas completadas');
+    if (!allFiles.has(fixturePath)) {
+      references.add(fixturePath);
+      allFiles.add(fixturePath);
+    }
+  }
+};
+
+// Función principal para leer y extraer las referencias
+const extractReferences = (testFile: string): void => {
+  const references: Set<string> = new Set();
+  const allFiles: Set<string> = new Set();
+
+  // Primero, procesamos el archivo de pruebas inicial
+  const resolvedTestFile = checkFileExistence(testFile);
+  if (resolvedTestFile) {
+    references.add(resolvedTestFile);
+    allFiles.add(resolvedTestFile);
+
+    // Buscar importaciones y fixtures en el archivo de pruebas
+    addImportReferences(resolvedTestFile, references, allFiles);
+    addFixtureReferences(resolvedTestFile, references, allFiles);
+
+    // Iterar sobre las referencias encontradas para buscar más importaciones y fixtures
+    const filesToProcess = Array.from(references);
+    for (const file of filesToProcess) {
+      addImportReferences(file, references, allFiles);
+      addFixtureReferences(file, references, allFiles);
+    }
+  }
+
+  // Guardamos las referencias en un archivo JSON
+  const referencesList = Array.from(references);
+  fs.writeFileSync('extracted_references.json', JSON.stringify({ fileReferences: referencesList }, null, 2));
+};
+
+const testRunInput = process.argv[2];
+
+extractReferences(testRunInput);
 
