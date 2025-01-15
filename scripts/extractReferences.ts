@@ -8,56 +8,28 @@ export const extractReferences = (
   testFile: string,
   aliasFilePath: string
 ) => {
-  console.log(`Inicio de extracción de referencias para el archivo: ${testFile}`);
-  console.log(`Leyendo aliases desde: ${aliasFilePath}`);
-
-  // Leer y parsear los aliases
-  let aliases = {};
-  try {
-    aliases = JSON.parse(fs.readFileSync(aliasFilePath, 'utf-8'));
-    console.log(`Aliases cargados:`, aliases);
-  } catch (error) {
-    console.error(`Error al leer el archivo de aliases: ${aliasFilePath}`, error);
-    return;
-  }
-
+  const aliases = JSON.parse(fs.readFileSync(aliasFilePath, 'utf-8'));
   const fileReferences = new Set<string>();
   const allFiles = new Set<string>();
   const notFound = new Set<string>();
+  const log: string[] = [];
 
   // Agregar las referencias de importación
-  console.log('Agregando referencias de importación...');
-  try {
-    addImportReferences(testFile, fileReferences, allFiles, notFound, aliases);
-  } catch (error) {
-    console.error('Error al agregar referencias de importación:', error);
-  }
+  addImportReferences(testFile, fileReferences, allFiles, notFound, aliases, log);
 
   // Agregar las referencias de fixtures
-  console.log('Agregando referencias de fixtures...');
-  try {
-    addFixtureReferences(testFile, fileReferences);
-  } catch (error) {
-    console.error('Error al agregar referencias de fixtures:', error);
-  }
+  addFixtureReferences(testFile, fileReferences, log);
 
-  // Preparar el resultado
-  const result = {
+  // Guardar las referencias y los archivos no encontrados en el archivo JSON
+  const output = {
     fileReferences: Array.from(fileReferences),
-    allFiles: Array.from(allFiles),
     notFound: Array.from(notFound),
+    log: log // Incluir los logs en el archivo JSON
   };
 
-  console.log('Resultado de la extracción:', result);
+  // Escribir el resultado en el archivo JSON
+  fs.writeFileSync('extracted_references.json', JSON.stringify(output, null, 2));
 
-  // Guardar las referencias en un archivo JSON
-  const outputFile = 'extracted_references.json';
-  try {
-    fs.writeFileSync(outputFile, JSON.stringify(result, null, 2));
-    console.log(`Referencias extraídas guardadas en ${outputFile}`);
-  } catch (error) {
-    console.error(`Error al escribir el archivo ${outputFile}:`, error);
-  }
-
-  return result;
+  console.log('Referencias extraídas:', output);
 };
+
