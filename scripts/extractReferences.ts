@@ -7,6 +7,36 @@ const readAliases = (aliasFilePath: string) => {
   return JSON.parse(aliasData);
 };
 
+// Resolver rutas relativas y normalizar extensiones
+const resolveImportPath = (importPath: string, basePath: string, aliases: Record<string, string>) => {
+  // Resolver alias
+  if (importPath.startsWith('@')) {
+    const alias = importPath.split('/')[0];
+    const aliasBase = aliases[alias];
+    if (aliasBase) {
+      importPath = path.join(aliasBase, importPath.replace(`${alias}/`, ''));
+    }
+  }
+
+  // Resolver rutas relativas
+  if (importPath.startsWith('./') || importPath.startsWith('../')) {
+    importPath = path.resolve(path.dirname(basePath), importPath);
+  }
+
+  // Añadir extensiones si faltan
+  if (!path.extname(importPath)) {
+    if (fs.existsSync(`${importPath}.ts`)) importPath += '.ts';
+    else if (fs.existsSync(`${importPath}.js`)) importPath += '.js';
+  }
+
+  // Normalizar la ruta para asegurar que se ajuste al contexto esperado
+  if (importPath.includes('cypress/')) {
+    return path.relative(process.cwd(), importPath);
+  }
+
+  return null; // Ignorar rutas fuera del alcance relevante
+};
+
 // Función para extraer los fixtures desde el contenido del archivo
 const extractFixtures = (fileReferences: string[]) => {
   const fixtures: string[] = [];
@@ -14,10 +44,8 @@ const extractFixtures = (fileReferences: string[]) => {
   fileReferences.forEach((file) => {
     const filePath = path.resolve(file);
 
-    // Verificar si el archivo existe antes de intentar leerlo
     if (fs.existsSync(filePath)) {
       const fileContent = fs.readFileSync(filePath, 'utf-8');
-      // Buscar las sentencias cy.fixture
       const fixtureMatches = fileContent.match(/cy\.fixture\(['"]([^'"]+)['"]\)/g);
       if (fixtureMatches) {
         fixtureMatches.forEach((match) => {
@@ -40,29 +68,16 @@ const extractReferences = (testFile: string, aliasFilePath: string) => {
   const aliases = readAliases(aliasFilePath);
   const fileReferences: string[] = [];
 
-  // Leer el contenido del archivo de prueba
   const testFilePath = path.resolve(testFile);
   const fileContent = fs.readFileSync(testFilePath, 'utf-8');
 
-  // Buscar todas las importaciones en el archivo
   const importPattern = /import\s+.*\s+from\s+['"](.*)['"]/g;
   let match;
   while ((match = importPattern.exec(fileContent)) !== null) {
-    let importPath = match[1];
-
-    // Resolver alias
-    if (importPath.startsWith('@')) {
-      const alias = importPath.split('/')[0];
-      const aliasBase = aliases[alias];
-      if (aliasBase) {
-        importPath = importPath.replace(alias, aliasBase);
-      } else {
-        console.log(`Alias no encontrado: ${alias}`);
-      }
+    const importPath = resolveImportPath(match[1], testFilePath, aliases);
+    if (importPath) {
+      fileReferences.push(importPath);
     }
-
-    // Agregar la referencia al array
-    fileReferences.push(importPath);
   }
 
   const fixtures = extractFixtures(fileReferences);
@@ -71,11 +86,11 @@ const extractReferences = (testFile: string, aliasFilePath: string) => {
 };
 
 // Ejecución principal
-const testFile = process.argv[2];  // Ruta del archivo de prueba
-const aliasFilePath = '.aliases.json';  // Ruta del archivo de aliases
+const testFile = process.argv[2];
+const aliasFilePath = '.aliases.json';
 
 const { fileReferences, fixtures } = extractReferences(testFile, aliasFilePath);
 
-console.log('Referencias extraídas:', fileReferences);
-console.log('Fixtures extraídos:', fixtures);
+console.log('Referencias extraídas:', JSON.stringify(fileReferences, null, 2));
+console.log('Fixtures extraídos:', JSON.stringify(fixtures, null, 2));
 
