@@ -10,80 +10,44 @@ export const addImportReferences = (
   log: string[]
 ) => {
   const fileContent = fs.readFileSync(testFile, 'utf-8');
-  const importPattern = /import\s+.*\s+from\s+['"](.*)['"]/g;
-  let match;
 
-  // Buscar todas las rutas de importación en el archivo de pruebas
-  while ((match = importPattern.exec(fileContent)) !== null) {
+  const importRegex = /import\s+.*\s+from\s+['"]([^'"]+)['"]/g;
+  let match;
+  while ((match = importRegex.exec(fileContent)) !== null) {
     let importPath = match[1];
-    log.push(`Procesando importación: ${importPath}`);
 
     // Resolver alias
     if (importPath.startsWith('@')) {
-      const alias = importPath.split('/')[0];
-      const aliasBase = aliases[alias];
-
+      const aliasName = importPath.split('/')[0];
+      const aliasBase = aliases[aliasName];
       if (aliasBase) {
-        importPath = path.join(aliasBase, importPath.slice(alias.length));
-        log.push(`Alias resuelto: ${importPath}`);
+        importPath = importPath.replace(aliasName, aliasBase);
+        log.push(`Alias resuelto: ${aliasName} → ${aliasBase}`);
       } else {
-        log.push(`Alias no encontrado para: ${importPath}`);
-        continue; // Si no se encuentra alias, saltar
+        log.push(`Alias no encontrado: ${aliasName}`);
       }
     }
 
-    // Comprobar si el archivo ya fue procesado
-    if (!allFiles.has(importPath)) {
-      allFiles.add(importPath);
+    // Resolver la ruta relativa
+    let resolvedPath = path.resolve(path.dirname(testFile), importPath);
 
-      // Intentar añadir la extensión .ts
-      let resolvedPath = `${importPath}.ts`;
-      if (fs.existsSync(resolvedPath)) {
-        fileReferences.add(resolvedPath);
-        log.push(`Ruta añadida: ${resolvedPath}`);
-      } else {
-        // Si no existe .ts, intentar con .js
-        resolvedPath = `${importPath}.js`;
-        if (fs.existsSync(resolvedPath)) {
-          fileReferences.add(resolvedPath);
-          log.push(`Ruta añadida: ${resolvedPath}`);
-        } else {
-          // Si no existe, probar sin extensión
-          resolvedPath = importPath;
-          if (fs.existsSync(resolvedPath)) {
-            fileReferences.add(resolvedPath);
-            log.push(`Ruta añadida: ${resolvedPath}`);
-          } else {
-            // Si no se encuentra, marcar como no encontrado
-            notFound.add(resolvedPath);
-            log.push(`Ruta no encontrada: ${resolvedPath}`);
-          }
-        }
-      }
+    // Comprobar si el archivo existe con .ts
+    if (!fs.existsSync(resolvedPath + '.ts') && !fs.existsSync(resolvedPath + '.js')) {
+      notFound.add(resolvedPath);
+      log.push(`No se encontró: ${resolvedPath}`);
+      continue;
     }
-  }
-};
 
-export const addFixtureReferences = (
-  testFile: string,
-  fileReferences: Set<string>,
-  log: string[]
-) => {
-  const fileContent = fs.readFileSync(testFile, 'utf-8');
-  const fixturePattern = /fixtures\/(.*)/g;
-  let match;
-
-  // Buscar todas las rutas de fixtures en el archivo de pruebas
-  while ((match = fixturePattern.exec(fileContent)) !== null) {
-    const fixturePath = match[1];
-    const resolvedPath = `cypress/fixtures/${fixturePath}.json`;
-
-    // Si existe el archivo de fixture, añadirlo a las referencias
-    if (fs.existsSync(resolvedPath)) {
-      fileReferences.add(resolvedPath);
-      log.push(`Fixture añadido: ${resolvedPath}`);
+    if (fs.existsSync(resolvedPath + '.ts')) {
+      resolvedPath = resolvedPath + '.ts';
     } else {
-      log.push(`Fixture no encontrado: ${resolvedPath}`);
+      resolvedPath = resolvedPath + '.js';
+    }
+
+    if (!allFiles.has(resolvedPath)) {
+      fileReferences.add(resolvedPath);
+      allFiles.add(resolvedPath);
+      log.push(`Referencia añadida: ${resolvedPath}`);
     }
   }
 };
