@@ -1,4 +1,4 @@
-name: Extract References
+name: TypeScript Extract References
 
 on:
   workflow_dispatch:
@@ -11,42 +11,33 @@ on:
 jobs:
   extract-references:
     runs-on: ubuntu-latest
-
     steps:
-    - name: Check out repository
-      uses: actions/checkout@v2
+      - name: 💻 Checkout Repo
+        uses: actions/checkout@v4
 
-    - name: Cache dependencies
-      uses: actions/cache@v2
-      with:
-        path: |
-          node_modules
-          .bun
-        key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lockb') }}
-        restore-keys: |
-          ${{ runner.os }}-bun-
+      - name: 🗄️ Cache Bun
+        uses: actions/cache@v3
+        with:
+          path: ~/.bun
+          key: ${{ github.event.inputs.system }}-bun-${{ hashFiles('**/bun.lockb') }}
 
-    - name: Install Bun
-      run: |
-        curl -fsSL https://bun.sh/install | bash
-        export PATH="$HOME/.bun/bin:$PATH"
+      - name: 🍙 Bun Setup
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
 
-    - name: Install dependencies
-      run: |
-        bun install
+      - name: 🧬 Install Project Dependencies
+        run: bun install
 
-    - name: Run extractReferences script
-      run: |
-        bun run scripts/extractReferences.ts "${{ github.event.inputs.test_file }}" > extracted_references.json
+      - name: 🔎 Check Typescript Code
+        run: |
+          # Corre el linter de TypeScript para verificar errores de sintaxis
+          bun run check:ts
 
-    - name: Show extracted references log
-      run: |
-        echo "Contenido de extracted_references.json:"
-        cat extracted_references.json || echo "Archivo no encontrado"
-        
-    - name: Check log file content
-      run: |
-        echo "Contenido del log:"
-        cat log.txt || echo "log.txt no encontrado"
-
+      - name: 🧑‍💻 Run Extract References Script
+        run: |
+          bun run scripts/extractReferences.ts "${{ github.event.inputs.test_file }}" > extracted_references.json
+          
+      - name: Show extracted references
+        run: cat extracted_references.json
 
