@@ -21,10 +21,14 @@ export const extractReferences = (
   addFixtureReferences(testFile, fileReferences, allFiles, '');
 
   // Devolver las referencias y los archivos no encontrados, junto con el log
-  return {
+  const result = {
     fileReferences: Array.from(fileReferences),
     notFound: Array.from(notFound),
     log
   };
+
+  // Guardar el resultado en un archivo JSON
+  fs.writeFileSync('extracted_references.json', JSON.stringify(result, null, 2));
+  return result;
 };
 
