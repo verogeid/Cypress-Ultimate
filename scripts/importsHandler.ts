@@ -1,7 +1,6 @@
 import fs from 'fs';
 import path from 'path';
 
-// Función para agregar las referencias de importación
 export const addImportReferences = (
   testFile: string,
   fileReferences: Set<string>,
@@ -61,6 +60,30 @@ export const addImportReferences = (
           }
         }
       }
+    }
+  }
+};
+
+export const addFixtureReferences = (
+  testFile: string,
+  fileReferences: Set<string>,
+  log: string[]
+) => {
+  const fileContent = fs.readFileSync(testFile, 'utf-8');
+  const fixturePattern = /fixtures\/(.*)/g;
+  let match;
+
+  // Buscar todas las rutas de fixtures en el archivo de pruebas
+  while ((match = fixturePattern.exec(fileContent)) !== null) {
+    const fixturePath = match[1];
+    const resolvedPath = `cypress/fixtures/${fixturePath}.json`;
+
+    // Si existe el archivo de fixture, añadirlo a las referencias
+    if (fs.existsSync(resolvedPath)) {
+      fileReferences.add(resolvedPath);
+      log.push(`Fixture añadido: ${resolvedPath}`);
+    } else {
+      log.push(`Fixture no encontrado: ${resolvedPath}`);
     }
   }
 };
