@@ -29,7 +29,7 @@ const resolveImportPath = (importPath: string, basePath: string, aliases: Record
     else if (fs.existsSync(`${importPath}.js`)) importPath += '.js';
   }
 
-  // Normalizar la ruta para asegurar que se ajuste al contexto esperado (comienza desde cypress/)
+  // Asegurarse de que la ruta comience con 'cypress/' o una ruta paralela
   if (importPath.includes('cypress/')) {
     return path.relative(process.cwd(), importPath);
   }
@@ -46,10 +46,10 @@ const extractFixtures = (fileReferences: string[]) => {
 
     if (fs.existsSync(filePath)) {
       const fileContent = fs.readFileSync(filePath, 'utf-8');
-      const fixtureMatches = fileContent.match(/cy\.fixture\(['"]([^'"]+)['"]\)/g);
+      const fixtureMatches = fileContent.match(/cy\.fixture['"]([^'"]+)['"]/g);
       if (fixtureMatches) {
         fixtureMatches.forEach((match) => {
-          const fixturePath = match.match(/cy\.fixture\(['"]([^'"]+)['"]/);
+          const fixturePath = match.match(/cy\.fixture['"]([^'"]+)['"]/);
           if (fixturePath && fixturePath[1]) {
             fixtures.push(fixturePath[1]);
           }
