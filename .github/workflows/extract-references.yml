@@ -1,4 +1,4 @@
-name: Extract References with TypeScript
+name: Extract References
 
 on:
   workflow_dispatch:
@@ -16,6 +16,16 @@ jobs:
     - name: Check out repository
       uses: actions/checkout@v2
 
+    - name: Cache dependencies
+      uses: actions/cache@v2
+      with:
+        path: |
+          node_modules
+          .bun
+        key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lockb') }}
+        restore-keys: |
+          ${{ runner.os }}-bun-
+
     - name: Set up Bun
       uses: "jarvis-io/setup-bun@v1"
       with:
@@ -27,7 +37,7 @@ jobs:
 
     - name: Run extractReferences script
       run: |
-        bun run scripts/extractReferences.ts "${{ github.event.inputs.test_file }}" ".aliases.json" > extracted_references.json
+        bun run scripts/extractReferences.ts "${{ github.event.inputs.test_file }}" > extracted_references.json
 
     - name: Show extracted references log
       run: |
