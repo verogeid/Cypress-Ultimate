@@ -2,7 +2,8 @@ import fs from 'fs';
 import path from 'path';
 
 // Función para leer el archivo .aliases.json y convertirlo a un objeto
-const readAliases = (aliasFilePath: string) => {
+const readAliases = () => {
+  const aliasFilePath = path.resolve(__dirname, '..', '.aliases.json');
   const aliasData = fs.readFileSync(aliasFilePath, 'utf-8');
   const aliases = JSON.parse(aliasData);
   return aliases;
@@ -16,7 +17,7 @@ const resolveImportPaths = (filePath: string, aliases: Record<string, string>) =
   const fileContent = fs.readFileSync(filePath, 'utf-8');
   const importRegex = /import\s+.*\s+from\s+['"](.*)['"]/g;
   let match;
-  
+
   while ((match = importRegex.exec(fileContent)) !== null) {
     let resolvedPath = match[1];
 
@@ -25,7 +26,7 @@ const resolveImportPaths = (filePath: string, aliases: Record<string, string>) =
       const aliasName = resolvedPath.split('/')[0];
       const aliasSubpath = resolvedPath.substring(aliasName.length);
       const aliasBase = aliases[aliasName];
-      
+
       if (aliasBase) {
         resolvedPath = path.join(aliasBase, aliasSubpath);
       }
@@ -45,10 +46,10 @@ const resolveImportPaths = (filePath: string, aliases: Record<string, string>) =
 // Función para extraer los fixtures desde el contenido del archivo
 const extractFixtures = (fileReferences: string[]) => {
   const fixtures: string[] = [];
-  
+
   fileReferences.forEach((file) => {
     const fileContent = fs.readFileSync(file, 'utf-8');
-    const fixtureRegex = /cy\.fixture\(['"]([^'"]+)['"]\)/g;
+    const fixtureRegex = /cy\.fixture['"]([^'"]+)['"]/g;
     let match;
 
     while ((match = fixtureRegex.exec(fileContent)) !== null) {
@@ -60,8 +61,8 @@ const extractFixtures = (fileReferences: string[]) => {
 };
 
 // Función principal para ejecutar el script
-const extractReferences = (testFile: string, aliasFile: string) => {
-  const aliases = readAliases(aliasFile);
+const extractReferences = (testFile: string) => {
+  const aliases = readAliases();
   const fileReferences = resolveImportPaths(testFile, aliases);
   const fixtures = extractFixtures(fileReferences);
 
@@ -80,7 +81,6 @@ const extractReferences = (testFile: string, aliasFile: string) => {
 
 // Ejecutar el script con los parámetros de entrada
 const testFile = process.argv[2];
-const aliasFile = process.argv[3];
 
-extractReferences(testFile, aliasFile);
+extractReferences(testFile);
 
