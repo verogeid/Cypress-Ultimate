@@ -41,6 +41,7 @@ export const addImportReferences = (
         resolvedPath = `${resolvedPath}.js`;
       } else if (!fs.existsSync(resolvedPath)) {
         notFound.add(resolvedPath);
+        console.log(`Archivo no encontrado: ${resolvedPath}`);
         continue;
       }
 
@@ -49,6 +50,7 @@ export const addImportReferences = (
       if (!fileReferences.has(repoRelativePath)) {
         fileReferences.add(repoRelativePath);
         allFiles.add(repoRelativePath);
+        console.log(`Archivo procesado: ${repoRelativePath}`);
 
         // Llamar recursivamente para analizar el siguiente archivo
         addImportReferences(resolvedPath, fileReferences, allFiles, notFound, aliases);
