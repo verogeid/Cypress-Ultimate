@@ -1,59 +1,65 @@
 import fs from 'fs';
 import path from 'path';
 
-// Función para agregar referencias de importación desde un archivo de prueba
+// Función para agregar las referencias de importación
 export const addImportReferences = (
   testFile: string,
   fileReferences: Set<string>,
   allFiles: Set<string>,
   notFound: Set<string>,
-  aliases: Record<string, string>
+  aliases: Record<string, string>,
+  log: string[]
 ) => {
-  // Leer el contenido del archivo de prueba
   const fileContent = fs.readFileSync(testFile, 'utf-8');
-
-  // Extraer las rutas de las sentencias import
-  const importRegex = /import\s+.*\s+from\s+['"]([^'"]+)['"]/g;
+  const importPattern = /import\s+.*\s+from\s+['"](.*)['"]/g;
   let match;
 
-  while ((match = importRegex.exec(fileContent)) !== null) {
+  // Buscar todas las rutas de importación en el archivo de pruebas
+  while ((match = importPattern.exec(fileContent)) !== null) {
     let importPath = match[1];
-    let resolvedPath: string | null = null;
+    log.push(`Procesando importación: ${importPath}`);
 
     // Resolver alias
     if (importPath.startsWith('@')) {
       const alias = importPath.split('/')[0];
       const aliasBase = aliases[alias];
+
       if (aliasBase) {
-        const relativePath = importPath.replace(alias, aliasBase);
-        resolvedPath = path.resolve(path.dirname(testFile), relativePath);
+        importPath = path.join(aliasBase, importPath.slice(alias.length));
+        log.push(`Alias resuelto: ${importPath}`);
+      } else {
+        log.push(`Alias no encontrado para: ${importPath}`);
+        continue; // Si no se encuentra alias, saltar
       }
-    } else if (importPath.startsWith('.') || importPath.startsWith('/')) {
-      // Resolver rutas relativas o absolutas
-      resolvedPath = path.resolve(path.dirname(testFile), importPath);
     }
 
-    // Probar con .ts, .js y la ruta directa
-    if (resolvedPath) {
-      if (fs.existsSync(`${resolvedPath}.ts`)) {
-        resolvedPath = `${resolvedPath}.ts`;
-      } else if (fs.existsSync(`${resolvedPath}.js`)) {
-        resolvedPath = `${resolvedPath}.js`;
-      } else if (!fs.existsSync(resolvedPath)) {
-        notFound.add(resolvedPath);
-        console.log(`Archivo no encontrado: ${resolvedPath}`);
-        continue;
-      }
+    // Comprobar si el archivo ya fue procesado
+    if (!allFiles.has(importPath)) {
+      allFiles.add(importPath);
 
-      // Convertir a ruta relativa al repositorio
-      const repoRelativePath = path.relative(process.cwd(), resolvedPath);
-      if (!fileReferences.has(repoRelativePath)) {
-        fileReferences.add(repoRelativePath);
-        allFiles.add(repoRelativePath);
-        console.log(`Archivo procesado: ${repoRelativePath}`);
-
-        // Llamar recursivamente para analizar el siguiente archivo
-        addImportReferences(resolvedPath, fileReferences, allFiles, notFound, aliases);
+      // Intentar añadir la extensión .ts
+      let resolvedPath = `${importPath}.ts`;
+      if (fs.existsSync(resolvedPath)) {
+        fileReferences.add(resolvedPath);
+        log.push(`Ruta añadida: ${resolvedPath}`);
+      } else {
+        // Si no existe .ts, intentar con .js
+        resolvedPath = `${importPath}.js`;
+        if (fs.existsSync(resolvedPath)) {
+          fileReferences.add(resolvedPath);
+          log.push(`Ruta añadida: ${resolvedPath}`);
+        } else {
+          // Si no existe, probar sin extensión
+          resolvedPath = importPath;
+          if (fs.existsSync(resolvedPath)) {
+            fileReferences.add(resolvedPath);
+            log.push(`Ruta añadida: ${resolvedPath}`);
+          } else {
+            // Si no se encuentra, marcar como no encontrado
+            notFound.add(resolvedPath);
+            log.push(`Ruta no encontrada: ${resolvedPath}`);
+          }
+        }
       }
     }
   }
