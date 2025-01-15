@@ -82,7 +82,11 @@ const extractReferences = (testFile: string, aliasFilePath: string) => {
 
   const fixtures = extractFixtures(fileReferences);
 
-  return { fileReferences, fixtures };
+  // Guardar los resultados en el archivo JSON
+  const result = { fileReferences, fixtures };
+  fs.writeFileSync('extracted_references.json', JSON.stringify(result, null, 2));
+
+  return result;
 };
 
 // Ejecución principal
