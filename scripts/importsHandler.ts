@@ -1,4 +1,4 @@
-limport fs from 'fs';
+import fs from 'fs';
 import path from 'path';
 
 // Verifica la existencia de archivo con extensiones posibles
