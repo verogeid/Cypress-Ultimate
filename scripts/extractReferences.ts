@@ -20,16 +20,11 @@ export const extractReferences = (
   // Agregar las referencias de fixtures
   addFixtureReferences(testFile, fileReferences, log);
 
-  // Guardar las referencias y los archivos no encontrados en el archivo JSON
-  const output = {
+  // Devolver las referencias y los archivos no encontrados, junto con el log
+  return {
     fileReferences: Array.from(fileReferences),
     notFound: Array.from(notFound),
-    log: log // Incluir los logs en el archivo JSON
+    log
   };
-
-  // Escribir el resultado en el archivo JSON
-  fs.writeFileSync('extracted_references.json', JSON.stringify(output, null, 2));
-
-  console.log('Referencias extraídas:', output);
 };
 
