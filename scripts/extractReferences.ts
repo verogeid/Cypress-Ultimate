@@ -1,95 +1,86 @@
-import fs from "fs";
-import path from "path";
+import fs from 'fs';
+import path from 'path';
 
-// Paso 1: Leer aliases desde `.aliases.json`
-function readAliases(filePath: string): Record<string, string> {
-  const aliasesContent = fs.readFileSync(filePath, "utf-8");
-  const aliases = JSON.parse(aliasesContent);
+// Función para leer el archivo .aliases.json y convertirlo a un objeto
+const readAliases = (aliasFilePath: string) => {
+  const aliasData = fs.readFileSync(aliasFilePath, 'utf-8');
+  const aliases = JSON.parse(aliasData);
   return aliases;
-}
+};
 
-// Paso 2: Extraer declaraciones de importación
-function extractImports(filePath: string): string[] {
-  const fileContent = fs.readFileSync(filePath, "utf-8");
-  const importRegex = /import\s+.*\s+from\s+["']([^"']+)["'];/g;
-  return [...fileContent.matchAll(importRegex)].map(match => match[1]);
-}
+// Función para resolver las rutas de los imports
+const resolveImportPaths = (filePath: string, aliases: Record<string, string>) => {
+  const fileReferences: string[] = [];
 
-// Paso 3: Resolver rutas de importación
-function resolvePaths(imports: string[], aliases: Record<string, string>, baseDir: string): string[] {
-  const resolvedPaths: string[] = [];
-
-  for (const imp of imports) {
-    let resolvedPath = imp;
-
-    // Resolver rutas relativas
-    if (imp.startsWith(".") || imp.startsWith("..")) {
-      resolvedPath = path.resolve(baseDir, imp);
-    }
+  // Leer el archivo de prueba y extraer las importaciones
+  const fileContent = fs.readFileSync(filePath, 'utf-8');
+  const importRegex = /import\s+.*\s+from\s+['"](.*)['"]/g;
+  let match;
+  
+  while ((match = importRegex.exec(fileContent)) !== null) {
+    let resolvedPath = match[1];
 
     // Resolver alias
-    if (imp.startsWith("@")) {
-      const [alias, ...subPath] = imp.split("/");
-      if (aliases[alias]) {
-        resolvedPath = path.resolve(aliases[alias], subPath.join("/"));
+    if (resolvedPath.startsWith('@')) {
+      const aliasName = resolvedPath.split('/')[0];
+      const aliasSubpath = resolvedPath.substring(aliasName.length);
+      const aliasBase = aliases[aliasName];
+      
+      if (aliasBase) {
+        resolvedPath = path.join(aliasBase, aliasSubpath);
       }
     }
 
-    // Verificar si el archivo existe con extensión .ts o .js
-    if (!resolvedPath.endsWith(".ts") && !resolvedPath.endsWith(".js")) {
-      if (fs.existsSync(`${resolvedPath}.ts`)) resolvedPath += ".ts";
-      else if (fs.existsSync(`${resolvedPath}.js`)) resolvedPath += ".js";
-    }
+    // Asegurarse de que la ruta sea relativa al repositorio
+    resolvedPath = resolvedPath.replace(/^\.\//, '');
 
-    if (resolvedPath.includes("cypress/") && !resolvedPaths.includes(resolvedPath)) {
-      resolvedPaths.push(resolvedPath);
+    if (resolvedPath.startsWith('cypress/')) {
+      fileReferences.push(resolvedPath);
     }
   }
 
-  return resolvedPaths;
-}
+  return fileReferences;
+};
 
-// Paso 4: Buscar `cy.fixture`
-function findFixtures(files: string[]): string[] {
-  const fixtureRegex = /cy\.fixture\(["']([^"']+)["']\)/g;
+// Función para extraer los fixtures desde el contenido del archivo
+const extractFixtures = (fileReferences: string[]) => {
   const fixtures: string[] = [];
+  
+  fileReferences.forEach((file) => {
+    const fileContent = fs.readFileSync(file, 'utf-8');
+    const fixtureRegex = /cy\.fixture\(['"]([^'"]+)['"]\)/g;
+    let match;
 
-  for (const file of files) {
-    const content = fs.readFileSync(file, "utf-8");
-    const matches = [...content.matchAll(fixtureRegex)].map(match => match[1]);
-    fixtures.push(...matches);
-  }
+    while ((match = fixtureRegex.exec(fileContent)) !== null) {
+      fixtures.push(match[1]);
+    }
+  });
 
   return fixtures;
-}
+};
 
-// Ejecución del script
-function main(testFile: string, aliasesPath: string) {
-  const baseDir = path.dirname(testFile);
+// Función principal para ejecutar el script
+const extractReferences = (testFile: string, aliasFile: string) => {
+  const aliases = readAliases(aliasFile);
+  const fileReferences = resolveImportPaths(testFile, aliases);
+  const fixtures = extractFixtures(fileReferences);
 
-  console.log("Leyendo aliases...");
-  const aliases = readAliases(aliasesPath);
+  // Guardar el archivo de resultados
+  const result = {
+    testFile: testFile,
+    fileReferences: fileReferences,
+    fixtures: fixtures
+  };
 
-  console.log("Extrayendo importaciones...");
-  const imports = extractImports(testFile);
+  const outputFile = 'extracted_references.json';
+  fs.writeFileSync(outputFile, JSON.stringify(result, null, 2));
 
-  console.log("Resolviendo rutas...");
-  const resolvedFiles = resolvePaths(imports, aliases, baseDir);
+  console.log(`Referencias extraídas: ${JSON.stringify(result, null, 2)}`);
+};
 
-  console.log("Buscando 'cy.fixture'...");
-  const fixtures = findFixtures(resolvedFiles);
+// Ejecutar el script con los parámetros de entrada
+const testFile = process.argv[2];
+const aliasFile = process.argv[3];
 
-  console.log("Archivos relevantes:");
-  console.log(resolvedFiles);
-
-  console.log("Fixtures encontrados:");
-  console.log(fixtures);
-}
-
-// Ruta al archivo de prueba y aliases
-const testFile = "cypress/e2e/Tests/API/Cards/GX3-5811-boardMembers.api.cy.ts";
-const aliasesPath = ".aliases.json";
-
-// Ejecutar el script
-main(testFile, aliasesPath);
+extractReferences(testFile, aliasFile);
 
