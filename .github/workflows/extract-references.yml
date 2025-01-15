@@ -1,6 +1,4 @@
-Aquí tienes el workflow actualizado, asumiendo que el archivo .aliases.json siempre está en la carpeta raíz:
-
-name: Extract References
+name: Extract References with TypeScript
 
 on:
   workflow_dispatch:
