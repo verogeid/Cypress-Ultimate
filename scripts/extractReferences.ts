@@ -23,13 +23,13 @@ const resolveImportPath = (importPath: string, basePath: string, aliases: Record
     importPath = path.resolve(path.dirname(basePath), importPath);
   }
 
-  // Añadir extensiones si faltan
+  // Asegurarse de que se añada la extensión .ts o .js
   if (!path.extname(importPath)) {
     if (fs.existsSync(`${importPath}.ts`)) importPath += '.ts';
     else if (fs.existsSync(`${importPath}.js`)) importPath += '.js';
   }
 
-  // Normalizar la ruta para asegurar que se ajuste al contexto esperado
+  // Normalizar la ruta para asegurar que se ajuste al contexto esperado (comienza desde cypress/)
   if (importPath.includes('cypress/')) {
     return path.relative(process.cwd(), importPath);
   }
