@@ -22,11 +22,16 @@ export const extractReferences = (
   // Guardar el log en un archivo o variable según sea necesario
   fs.writeFileSync('log.txt', log.join('\n'));
 
-  // Devolver las referencias y los archivos no encontrados
-  return {
+  // Devolver las referencias y los archivos no encontrados, incluyendo el log
+  const result = {
     fileReferences: Array.from(fileReferences),
     notFound: Array.from(notFound),
     log: log
   };
+
+  // Escribir el resultado completo, incluyendo el log, en el archivo JSON
+  fs.writeFileSync('extracted_references.json', JSON.stringify(result, null, 2));
+
+  return result;
 };
 
