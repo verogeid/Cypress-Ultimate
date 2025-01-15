@@ -1,0 +1,26 @@
+name: Run TypeScript Script extractReferences
+
+on:
+  workflow_dispatch:
+    inputs:
+      test_file:
+        description: 'Ruta del archivo de prueba'
+        required: true
+        default: 'cypress/e2e/Tests/API/Cards/GX3-5811-boardMembers.api.cy.ts'
+
+jobs:
+  run-script:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v2
+
+      - name: Install dependencies
+        run: |
+          npm install
+
+      - name: Run TypeScript script
+        run: |
+          npx ts-node scripts/extract-references.ts ${{ github.event.inputs.test_file }}
+
