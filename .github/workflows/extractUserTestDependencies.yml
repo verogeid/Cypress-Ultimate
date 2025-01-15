@@ -1,4 +1,4 @@
-name: Extract File References
+name: Extract File References without TypeScript 
 
 on:
   workflow_dispatch:
