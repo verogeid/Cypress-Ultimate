@@ -23,7 +23,7 @@ const resolveImportPath = (importPath: string, basePath: string, aliases: Record
     importPath = path.resolve(path.dirname(basePath), importPath);
   }
 
-  // Asegurarse de que se añada la extensión .ts o .js
+  // Asegurarse de que se añada la extensión .ts o .js para los imports
   if (!path.extname(importPath)) {
     if (fs.existsSync(`${importPath}.ts`)) importPath += '.ts';
     else if (fs.existsSync(`${importPath}.js`)) importPath += '.js';
@@ -46,12 +46,15 @@ const extractFixtures = (fileReferences: string[]) => {
 
     if (fs.existsSync(filePath)) {
       const fileContent = fs.readFileSync(filePath, 'utf-8');
-      const fixtureMatches = fileContent.match(/cy\.fixture['"]([^'"]+)['"]/g);
+      const fixtureMatches = fileContent.match(/cy\.fixture\(['"]([^'"]+)['"]\)/g);
       if (fixtureMatches) {
         fixtureMatches.forEach((match) => {
-          const fixturePath = match.match(/cy\.fixture['"]([^'"]+)['"]/);
+          const fixturePath = match.match(/cy\.fixture\(['"]([^'"]+)['"]/);
           if (fixturePath && fixturePath[1]) {
-            fixtures.push(fixturePath[1]);
+            const fixtureResolved = path.resolve('cypress', 'fixtures', fixturePath[1] + '.json');
+            if (fs.existsSync(fixtureResolved)) {
+              fixtures.push(path.relative(process.cwd(), fixtureResolved));
+            }
           }
         });
       }
@@ -80,20 +83,24 @@ const extractReferences = (testFile: string, aliasFilePath: string) => {
     }
   }
 
+  // Agregar los fixtures encontrados
   const fixtures = extractFixtures(fileReferences);
 
+  // Unir imports y fixtures en una sola lista de rutas
+  const allReferences = [...fileReferences, ...fixtures];
+
   // Guardar los resultados en el archivo JSON
-  const result = { fileReferences, fixtures };
+  const result = { fileReferences: allReferences };
   fs.writeFileSync('extracted_references.json', JSON.stringify(result, null, 2));
 
   return result;
 };
 
 // Ejecución principal
-const testFile = process.argv[2];
+const testFile = process.argv[2] || 'cypress/e2e/Tests/API/Cards/GX3-5811-boardMembers.api.cy.ts';
 const aliasFilePath = '.aliases.json';
 
-const { fileReferences, fixtures } = extractReferences(testFile, aliasFilePath);
+const { fileReferences } = extractReferences(testFile, aliasFilePath);
 
 console.log('Referencias extraídas:', JSON.stringify(fileReferences, null, 2));
-console.log('Fixtures extraídos:', JSON.stringify(fixtures, null, 2));
+
