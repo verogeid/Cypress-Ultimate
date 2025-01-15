@@ -18,7 +18,7 @@ export const extractReferences = (
   addImportReferences(testFile, fileReferences, allFiles, notFound, aliases, log);
 
   // Agregar las referencias de fixtures
-  addFixtureReferences(testFile, fileReferences, log);
+  addFixtureReferences(testFile, fileReferences, allFiles, '');
 
   // Devolver las referencias y los archivos no encontrados, junto con el log
   return {
