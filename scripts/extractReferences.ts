@@ -1,5 +1,9 @@
+Aquí tienes el código modificado para usar el archivo fixturesHandler.ts y el código relevante para la extracción de las importaciones de importsHandler.ts, adaptado a tu solicitud:
+
 import fs from 'fs';
 import path from 'path';
+import { addImportReferences } from './importsHandler';
+import { addFixtureReferences } from './fixturesHandler';
 
 // Función para leer el archivo .aliases.json y convertirlo a un objeto
 const readAliases = (aliasFilePath: string) => {
@@ -7,74 +11,50 @@ const readAliases = (aliasFilePath: string) => {
   return JSON.parse(aliasData);
 };
 
-// Función para extraer los fixtures desde el contenido del archivo
-const extractFixtures = (fileReferences: string[]) => {
-  const fixtures: string[] = [];
-
-  fileReferences.forEach((file) => {
-    const filePath = path.resolve(file);
-
-    // Verificar si el archivo existe antes de intentar leerlo
-    if (fs.existsSync(filePath)) {
-      const fileContent = fs.readFileSync(filePath, 'utf-8');
-      // Buscar las sentencias cy.fixture
-      const fixtureMatches = fileContent.match(/cy\.fixture\(['"]([^'"]+)['"]\)/g);
-      if (fixtureMatches) {
-        fixtureMatches.forEach((match) => {
-          const fixturePath = match.match(/cy\.fixture\(['"]([^'"]+)['"]/);
-          if (fixturePath && fixturePath[1]) {
-            fixtures.push(fixturePath[1]);
-          }
-        });
-      }
-    } else {
-      console.log(`Archivo no encontrado: ${filePath}`);
-    }
-  });
-
-  return fixtures;
-};
-
-// Función principal para extraer las referencias de importación
+// Función principal para extraer las referencias de importación y fixtures
 const extractReferences = (testFile: string, aliasFilePath: string) => {
   const aliases = readAliases(aliasFilePath);
-  const fileReferences: string[] = [];
+  const fileReferences: Set<string> = new Set();
+  const allFiles: Set<string> = new Set();
+  const notFound: Set<string> = new Set();
 
   // Leer el contenido del archivo de prueba
   const testFilePath = path.resolve(testFile);
-  const fileContent = fs.readFileSync(testFilePath, 'utf-8');
+  const resolvedTestFile = fs.existsSync(testFilePath) ? testFilePath : null;
+  if (resolvedTestFile) {
+    // Buscar las importaciones y resolverlas
+    addImportReferences(resolvedTestFile, fileReferences, allFiles, notFound);
 
-  // Buscar todas las importaciones en el archivo
-  const importPattern = /import\s+.*\s+from\s+['"](.*)['"]/g;
-  let match;
-  while ((match = importPattern.exec(fileContent)) !== null) {
-    let importPath = match[1];
-
-    // Resolver alias
-    if (importPath.startsWith('@')) {
-      const alias = importPath.split('/')[0];
-      const aliasBase = aliases[alias];
-      if (aliasBase) {
-        importPath = importPath.replace(alias, aliasBase);
-      } else {
-        console.log(`Alias no encontrado: ${alias}`);
-      }
-    }
-
-    // Agregar la referencia al array
-    fileReferences.push(importPath);
+    // Buscar las fixtures y resolverlas
+    addFixtureReferences(resolvedTestFile, fileReferences, allFiles);
   }
 
-  const fixtures = extractFixtures(fileReferences);
+  // Recorrer recursivamente los archivos de referencias
+  const filesToProcess = Array.from(fileReferences);
+  for (const file of filesToProcess) {
+    addImportReferences(file, fileReferences, allFiles, notFound);
+    addFixtureReferences(file, fileReferences, allFiles);
+  }
 
-  return { fileReferences, fixtures };
+  return { fileReferences: Array.from(fileReferences), notFound: Array.from(notFound) };
 };
 
 // Ejecución principal
 const testFile = process.argv[2];  // Ruta del archivo de prueba
 const aliasFilePath = '.aliases.json';  // Ruta del archivo de aliases
 
-const { fileReferences, fixtures } = extractReferences(testFile, aliasFilePath);
+const { fileReferences, notFound } = extractReferences(testFile, aliasFilePath);
+
+const result = {
+  fileReferences,
+  notFound,
+};
+
+// Guardar en archivo JSON
+fs.writeFileSync('extracted_references.json', JSON.stringify(result, null, 2));
 
 console.log('Referencias extraídas:', fileReferences);
-console.log('Fixtures extraídos:', fixtures);
+console.log('Referencias no encontradas:', notFound);
+
+Este código usa addImportReferences y addFixtureReferences de los respectivos archivos importsHandler.ts y fixturesHandler.ts, manteniendo la estructura que quieres. Además, guarda tanto las rutas de archivo encontradas como las que no se pudieron encontrar en el archivo JSON extracted_references.json.
+
