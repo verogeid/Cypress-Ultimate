@@ -1,5 +1,3 @@
-Aquí tienes el archivo importHandler.ts con la lógica para manejar las rutas de las sentencias import:
-
 import fs from 'fs';
 import path from 'path';
 
