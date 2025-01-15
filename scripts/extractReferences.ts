@@ -2,20 +2,19 @@ import fs from 'fs';
 import path from 'path';
 
 // Verifica la existencia de archivo con diferentes extensiones
-const checkFileExistence = (filePath: string): string | null => {
+const checkFileExistence = (filePath: string, baseDir: string): string | null => {
   const extensions = ['.ts', '.js', ''];
   for (const ext of extensions) {
-    const fullPath = path.resolve(filePath + ext);
-    console.log(`Comprobando existencia del archivo: ${fullPath}`); // Depuración: ver la ruta completa
+    const fullPath = path.resolve(baseDir, filePath + ext);
     if (fs.existsSync(fullPath)) {
-      return fullPath;
+      return path.relative(baseDir, fullPath);
     }
   }
   return null;
 };
 
 // Agregar rutas de las importaciones
-const addImportReferences = (filePath: string, references: Set<string>, allFiles: Set<string>) => {
+const addImportReferences = (filePath: string, references: Set<string>, allFiles: Set<string>, baseDir: string) => {
   const fileContent = fs.readFileSync(filePath, 'utf-8');
 
   const importRegex = /import\s+.*\s+from\s+['"]([^'"]+)['"]/g;
@@ -30,8 +29,8 @@ const addImportReferences = (filePath: string, references: Set<string>, allFiles
       importedPath = importedPath.replace('@', 'cypress/');
     }
 
-    // Comprobar la existencia del archivo importado, añadiendo extensión si no tiene
-    importedPath = checkFileExistence(importedPath) || checkFileExistence(importedPath + '.ts') || checkFileExistence(importedPath + '.js');
+    // Comprobar la existencia del archivo importado
+    importedPath = checkFileExistence(importedPath, baseDir) || checkFileExistence(importedPath + '.ts', baseDir) || checkFileExistence(importedPath + '.js', baseDir);
 
     if (importedPath && !allFiles.has(importedPath)) {
       references.add(importedPath);
@@ -41,7 +40,7 @@ const addImportReferences = (filePath: string, references: Set<string>, allFiles
 };
 
 // Agregar rutas de las fixtures
-const addFixtureReferences = (filePath: string, references: Set<string>, allFiles: Set<string>) => {
+const addFixtureReferences = (filePath: string, references: Set<string>, allFiles: Set<string>, baseDir: string) => {
   const fileContent = fs.readFileSync(filePath, 'utf-8');
 
   const fixtureRegex = /cy\.fixture\(['"]([^'"]+)['"]\)/g;
@@ -67,21 +66,24 @@ const extractReferences = (testFile: string): void => {
   const references: Set<string> = new Set();
   const allFiles: Set<string> = new Set();
 
+  // Definir el directorio base
+  const baseDir = process.cwd();
+
   // Archivo de pruebas inicial
-  const resolvedTestFile = checkFileExistence(testFile);
+  const resolvedTestFile = checkFileExistence(testFile, baseDir);
   if (resolvedTestFile) {
     references.add(resolvedTestFile);
     allFiles.add(resolvedTestFile);
 
     // Buscar import y fixtures en el archivo de pruebas
-    addImportReferences(resolvedTestFile, references, allFiles);
-    addFixtureReferences(resolvedTestFile, references, allFiles);
+    addImportReferences(resolvedTestFile, references, allFiles, baseDir);
+    addFixtureReferences(resolvedTestFile, references, allFiles, baseDir);
 
     // Iterar sobre referencias encontradas
     const filesToProcess = Array.from(references);
     for (const file of filesToProcess) {
-      addImportReferences(file, references, allFiles);
-      addFixtureReferences(file, references, allFiles);
+      addImportReferences(file, references, allFiles, baseDir);
+      addFixtureReferences(file, references, allFiles, baseDir);
     }
   }
 
