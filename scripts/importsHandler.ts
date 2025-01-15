@@ -1,42 +1,45 @@
 import fs from 'fs';
 import path from 'path';
 
-// Verifica la existencia de archivo con extensiones posibles
+// Función para verificar si un archivo existe
 const checkFileExistence = (filePath: string): string | null => {
-  const extensions = ['.ts', '.js', ''];
-  for (const ext of extensions) {
-    const fullPath = filePath.endsWith(ext) ? filePath : filePath + ext;
-    if (fs.existsSync(fullPath)) {
-      return fullPath;
-    }
-  }
-  return null;
+  return fs.existsSync(filePath) ? filePath : null;
 };
 
-// Agregar rutas de las importaciones
-export const addImportReferences = (filePath: string, references: Set<string>, allFiles: Set<string>, notFound: Set<string>) => {
+// Función para extraer las importaciones de un archivo
+export const addImportReferences = (
+  file: string,
+  fileReferences: Set<string>,
+  allFiles: Set<string>,
+  notFound: Set<string>
+) => {
+  const filePath = path.resolve(file);
   const fileContent = fs.readFileSync(filePath, 'utf-8');
-  const importRegex = /import\s+.*\s+from\s+['"]([^'"]+)['"]/g;
+
+  // Buscar las sentencias de importación
+  const importPattern = /import\s+.*\s+from\s+['"](.*)['"]/g;
   let match;
+  while ((match = importPattern.exec(fileContent)) !== null) {
+    let importPath = match[1];
 
-  while ((match = importRegex.exec(fileContent)) !== null) {
-    let importedPath = match[1];
-
-    // Resolver rutas relativas y absolutas
-    if (importedPath.startsWith('.')) {
-      importedPath = path.resolve(path.dirname(filePath), importedPath);
-    } else if (importedPath.startsWith('@')) {
-      importedPath = importedPath.replace('@', 'cypress/');
+    // Resolver alias
+    if (importPath.startsWith('@')) {
+      const alias = importPath.split('/')[0];
+      const aliasBase = aliases[alias];
+      if (aliasBase) {
+        importPath = importPath.replace(alias, aliasBase);
+      } else {
+        console.log(`Alias no encontrado: ${alias}`);
+      }
     }
 
-    // Verificar existencia del archivo con extensión adecuada
-    const resolvedPath = checkFileExistence(importedPath);
+    // Verificar si el archivo importado existe
+    const resolvedPath = checkFileExistence(importPath);
     if (resolvedPath && !allFiles.has(resolvedPath)) {
-      references.add(resolvedPath);
+      fileReferences.add(resolvedPath);
       allFiles.add(resolvedPath);
     } else {
-      notFound.add(importedPath);
+      notFound.add(importPath);
     }
   }
 };
-
