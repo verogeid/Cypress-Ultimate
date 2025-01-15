@@ -1,22 +1,17 @@
 import fs from 'fs';
 import path from 'path';
 
-// Función para verificar si un archivo existe
-const checkFileExistence = (filePath: string): string | null => {
-  return fs.existsSync(filePath) ? filePath : null;
-};
-
-// Función para extraer las importaciones de un archivo
 export const addImportReferences = (
-  file: string,
+  testFile: string,
   fileReferences: Set<string>,
   allFiles: Set<string>,
-  notFound: Set<string>
+  notFound: Set<string>,
+  aliases: { [key: string]: string }
 ) => {
-  const filePath = path.resolve(file);
-  const fileContent = fs.readFileSync(filePath, 'utf-8');
+  const testFilePath = path.resolve(testFile);
+  const fileContent = fs.readFileSync(testFilePath, 'utf-8');
 
-  // Buscar las sentencias de importación
+  // Buscar todas las importaciones en el archivo
   const importPattern = /import\s+.*\s+from\s+['"](.*)['"]/g;
   let match;
   while ((match = importPattern.exec(fileContent)) !== null) {
@@ -33,7 +28,7 @@ export const addImportReferences = (
       }
     }
 
-    // Verificar si el archivo importado existe
+    // Verificar existencia y agregar la referencia al array
     const resolvedPath = checkFileExistence(importPath);
     if (resolvedPath && !allFiles.has(resolvedPath)) {
       fileReferences.add(resolvedPath);
@@ -43,3 +38,9 @@ export const addImportReferences = (
     }
   }
 };
+
+// Función para verificar si un archivo existe
+const checkFileExistence = (filePath: string): string | null => {
+  return fs.existsSync(filePath) ? filePath : null;
+};
+
