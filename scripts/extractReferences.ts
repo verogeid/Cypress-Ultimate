@@ -3,7 +3,6 @@ import path from 'path';
 import { addImportReferences } from './importsHandler';
 import { addFixtureReferences } from './fixturesHandler';
 
-// Función principal para extraer las referencias de importación y fixtures
 export const extractReferences = (
   testFile: string,
   aliasFilePath: string
@@ -18,17 +17,16 @@ export const extractReferences = (
   addImportReferences(testFile, fileReferences, allFiles, notFound, aliases, log);
 
   // Agregar las referencias de fixtures
-  addFixtureReferences(testFile, fileReferences, allFiles, '');
+  addFixtureReferences(testFile, fileReferences, allFiles, path.dirname(testFile), log);
 
-  // Devolver las referencias y los archivos no encontrados, junto con el log
-  const result = {
+  // Guardar el log en un archivo o variable según sea necesario
+  fs.writeFileSync('log.txt', log.join('\n'));
+
+  // Devolver las referencias y los archivos no encontrados
+  return {
     fileReferences: Array.from(fileReferences),
     notFound: Array.from(notFound),
-    log
+    log: log
   };
-
-  // Guardar el resultado en un archivo JSON
-  fs.writeFileSync('extracted_references.json', JSON.stringify(result, null, 2));
-  return result;
 };
 
