@@ -8,38 +8,51 @@ on:
         required: true
         default: 'cypress/e2e/Tests/API/Cards/GX3-5811-boardMembers.api.cy.ts'
 
+      system:
+        description: 🚀Select the OS
+        required: true
+        default: 'ubuntu-latest'
+        type: choice
+        options:
+        - ubuntu-latest
+        - ubuntu-22.04
+        - macos-latest
+        - windows-latest
+
+      debug_mode:
+        description: 'Activar modo de depuración (true/false)'
+        required: false
+        default: 'false'
+
 jobs:
   extract-references:
     runs-on: ubuntu-latest
     steps:
-      - name: 💻 Checkout Repo
-        uses: actions/checkout@v4
+    - name: 💻 Checkout Repo
+      uses: actions/checkout@v4
 
-      - name: 🗄️ Cache Bun
-        uses: actions/cache@v3
-        with:
-          path: ~/.bun
-          key: ${{ github.event.inputs.system }}-bun-${{ hashFiles('**/bun.lockb') }}
+    - name: 🗄️ Cache Bun
+      uses: actions/cache@v3
+      with:
+        path: ~/.bun
+        key: ${{ github.event.inputs.system }}-bun-${{ hashFiles('**/bun.lockb') }}
 
-      - name: 🍙 Bun Setup
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
+    - name: 🍙 Bun Setup
+      uses: oven-sh/setup-bun@v2
+      with:
+        bun-version: latest
 
-      - name: 🧬 Install Project Dependencies
-        run: bun install
+    - name: 🧬 Install Project Dependencies
+      run: bun install
 
-      - name: 🔎 Check Typescript Code
-        run: |
-          # Corre el linter de TypeScript para verificar errores de sintaxis
-          bun run check:ts
+    - name: 🔎 Check Typescript Code
+      run: |
+        # Corre el linter de TypeScript para verificar errores de sintaxis
+        bun run check:ts
 
-      - name: 🧑‍💻 Run Extract References Script
-        run: |
-          bun run scripts/extractReferences.ts "${{ github.event.inputs.test_file }}" > extracted_references.json
-          
-      - name: Show extracted references
-        run: cat extracted_references.json
+    - name: 🧑‍💻 Run Extract References Script
+      run: |
+        bun run scripts/extractReferences.ts "${{ github.event.inputs.test_file }}" "${{ github.event.inputs.debug_mode }}" > extracted_references.json
 
-
-
+    - name: Show extracted references
+      run: cat extracted_references.json

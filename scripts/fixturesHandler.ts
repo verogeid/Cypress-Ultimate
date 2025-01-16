@@ -1,39 +1,31 @@
-import fs from 'fs';
+import * as fs from 'fs';
+import * as path from 'path';
 
-export const addFixtureReferences = (
-  filePath: string,
-  references: Set<string>,
-  allFiles: Set<string>,
-  baseDir: string,
-  log: string[]
-) => {
-  console.log('Iniciando addFixtureReferences');
-  
-  const fileContent = fs.readFileSync(filePath, 'utf-8');
-  const fixtureRegex = /cy\.fixture['"]([^'"]+)['"]/g;
-  let match;
-  
-  while ((match = fixtureRegex.exec(fileContent)) !== null) {
-    let fixturePath = match[1];
+export const getFixtureReferences = async (_filePath: string): Promise<string[]> => {
+	const fixtureReferences: string[] = [];
+	try {
+		// Leer el archivo de prueba
+		const fileContent = await fs.promises.readFile(_filePath, 'utf-8');
 
-    console.log(`Encontrado fixture: ${fixturePath}`);
-    
-    // Rutas de fixtures con cypress/fixtures y extensión .json
-    if (!fixturePath.startsWith('cypress/fixtures/')) {
-      fixturePath = 'cypress/fixtures/' + fixturePath;
-      console.log(`Ruta de fixture modificada: ${fixturePath}`);
-    }
-    fixturePath = fixturePath + '.json';
+		// Regex para encontrar todas las referencias de fixtures (cy.fixture)
+		const fixtureRegex = /cy\.fixture\(['"]([^'"]+)['"]\)/g;
+		let match;
 
-    if (!allFiles.has(fixturePath)) {
-      references.add(fixturePath);
-      allFiles.add(fixturePath);
-      console.log(`Fixture agregado: ${fixturePath}`);
-    } else {
-      console.log(`Fixture ya procesado: ${fixturePath}`);
-    }
-  }
+		// Buscar todas las coincidencias de fixtures
+		while ((match = fixtureRegex.exec(fileContent)) !== null) {
+			const fixturePath = match[1];
 
-  console.log('addFixtureReferences completado');
+			// Resolver la ruta de fixtures en 'cypress/fixtures'
+			const resolvedFixturePath = `${path.join('cypress/fixtures', fixturePath)}.json`;
+			fixtureReferences.push(resolvedFixturePath);
+		}
+	} catch (error: unknown) {
+		if (error instanceof Error) {
+			console.error('Error al leer el archivo de prueba:', error.message);
+		} else {
+			console.error('Error desconocido al leer el archivo de prueba');
+		}
+	}
+
+	return fixtureReferences;
 };
-

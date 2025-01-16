@@ -1,52 +1,39 @@
-import fs from 'fs';
-import path from 'path';
+import * as fs from 'fs';
+import * as path from 'path';
 
-export const addImportReferences = (
-  testFile: string,
-  fileReferences: Set<string>,
-  allFiles: Set<string>,
-  notFound: Set<string>,
-  aliases: Record<string, string>,
-  log: string[]
-) => {
-  console.log('Iniciando addImportReferences');
-  
-  const fileContent = fs.readFileSync(testFile, 'utf-8');
-  
-  const importRegex = /import\s+.*\s+from\s+["']([^"']+)["']/g;
-  let match;
-  
-  while ((match = importRegex.exec(fileContent)) !== null) {
-    let importPath = match[1];
+export const getImportReferences = async (_inputFilePath: string, _aliases: Record<string, string>): Promise<string[]> => {
+	try {
+		const fileContent = await fs.promises.readFile(_inputFilePath, 'utf-8');
+		const importRegex = /import\s+.*\s+from\s+['"]([^'"]+)['"];/g;
+		const references: string[] = [];
+		let match;
 
-    console.log(`Encontrada importación: ${importPath}`);
-    
-    // Resolver alias
-    if (importPath.startsWith('@')) {
-      const aliasName = importPath.split('/')[0];
-      if (aliases[aliasName]) {
-        importPath = importPath.replace(aliasName, aliases[aliasName]);
-        console.log(`Alias encontrado. Ruta resuelta: ${importPath}`);
-      } else {
-        console.log(`Alias no encontrado para ${aliasName}`);
-      }
-    }
+		while ((match = importRegex.exec(fileContent)) !== null) {
+			let importPath = match[1];
 
-    // Resolver rutas relativas y absolutas
-    if (!importPath.startsWith('http') && !importPath.startsWith('cypress')) {
-      importPath = path.resolve(path.dirname(testFile), importPath);
-      console.log(`Ruta relativa convertida a absoluta: ${importPath}`);
-    }
+			// Resolver alias
+			if (importPath.startsWith('@')) {
+				const aliasKey = importPath.split('/')[0];
+				if (_aliases[aliasKey]) {
+					importPath = importPath.replace(aliasKey, _aliases[aliasKey]);
+				}
+			}
 
-    if (!allFiles.has(importPath)) {
-      fileReferences.add(importPath);
-      allFiles.add(importPath);
-      console.log(`Ruta agregada: ${importPath}`);
-    } else {
-      console.log(`Ruta ya procesada: ${importPath}`);
-    }
-  }
+			// Resolver ruta relativa si es necesario
+			if (importPath.startsWith('./') || importPath.startsWith('../')) {
+				importPath = path.resolve(path.dirname(_inputFilePath), importPath);
+			}
 
-  console.log('addImportReferences completado');
+			references.push(importPath);
+		}
+
+		return references;
+	} catch (error: unknown) {
+		if (error instanceof Error) {
+			console.error(`Error al leer el archivo de importaciones ${_inputFilePath}: ${error.message}`);
+		} else {
+			console.error('Error desconocido al leer el archivo de importaciones');
+		}
+		throw error;
+	}
 };
-

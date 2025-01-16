@@ -1,40 +1,82 @@
-import fs from 'fs';
-import path from 'path';
-import { addImportReferences } from './importsHandler';
-import { addFixtureReferences } from './fixturesHandler';
+import * as path from 'path';
+import { getAliases } from './aliasesHandler';
+import { getImportReferences } from './importsHandler';
+import { getFixtureReferences } from './fixturesHandler';
 
-export const extractReferences = (
-  testFile: string,
-  aliasFilePath: string
-) => {
-  console.log('Iniciando extractReferences');
-  
-  const aliases = JSON.parse(fs.readFileSync(aliasFilePath, 'utf-8'));
-  const fileReferences = new Set<string>();
-  const allFiles = new Set<string>();
-  const notFound = new Set<string>();
-  const log: string[] = [];
+const normalizeCypressPath = (_filePath: string, _DEBUG_MODE: boolean): string => {
+	const relativePath = _filePath.replace(/\\/g, '/');
 
-  console.log('Agregando referencias de importación...');
-  addImportReferences(testFile, fileReferences, allFiles, notFound, aliases, log);
+	if (relativePath.includes('cypress/')) {
+		const normalizedPath = relativePath.slice(relativePath.indexOf('cypress/'));
 
-  console.log('Agregando referencias de fixtures...');
-  addFixtureReferences(testFile, fileReferences, allFiles, path.dirname(testFile), log);
+		if (_DEBUG_MODE) console.log(`Ruta original: ${relativePath} -> Ruta normalizada: ${normalizedPath}`);
 
-  // Mostrar log en consola antes de guardarlo
-  console.log('Log generado:');
-  console.log(log.join('\n'));
+		return normalizedPath;
+	}
 
-  // Guardar el log en un archivo
-  fs.writeFileSync('log.txt', log.join('\n'));
-
-  console.log('ExtractReferences completado');
-
-  // Devolver las referencias y los archivos no encontrados
-  return {
-    fileReferences: Array.from(fileReferences),
-    notFound: Array.from(notFound),
-    log: log
-  };
+	if (_DEBUG_MODE) console.log(`Ruta original: ${relativePath} -> Ruta no modificada`);
+	return relativePath;
 };
 
+export const extractReferences = async (_inputFilePath: string = 'cypress/e2e/Tests/API/Cards/GX3-5811-boardMembers.api.cy.ts', _DEBUG_MODE: boolean = false): Promise<string[]> => {
+	if (_DEBUG_MODE) console.log(`Iniciando la extracción de referencias para el archivo: ${_inputFilePath}`);
+
+	try {
+		if (_DEBUG_MODE) console.log('Obteniendo alias...');
+		const aliases = await getAliases();
+		if (_DEBUG_MODE) console.log('Alias obtenidos:', aliases);
+
+		if (_DEBUG_MODE) console.log('Obteniendo referencias de importación...');
+		const importReferences = await getImportReferences(_inputFilePath, aliases);
+		if (_DEBUG_MODE) console.log('Referencias de importación encontradas:', importReferences);
+
+		if (_DEBUG_MODE) console.log('Obteniendo referencias de fixtures...');
+		const fixtureReferences = await getFixtureReferences(_inputFilePath);
+		if (_DEBUG_MODE) console.log('Referencias de fixtures encontradas:', fixtureReferences);
+
+		const allReferences = [...importReferences, ...fixtureReferences];
+		if (_DEBUG_MODE) console.log('Referencias combinadas:', allReferences);
+
+		const resolvedReferences = allReferences.map(ref => path.resolve(ref));
+
+		if (_DEBUG_MODE) console.log('Referencias resueltas:', resolvedReferences);
+
+		const normalizedReferences = resolvedReferences.map(filePath => normalizeCypressPath(filePath, _DEBUG_MODE));
+
+		if (_DEBUG_MODE) console.log('Referencias normalizadas:', normalizedReferences);
+
+		const uniqueReferences = [...new Set(normalizedReferences)];
+
+		if (_DEBUG_MODE) console.log('Referencias normalizadas y únicas:', uniqueReferences);
+
+		return uniqueReferences;
+	} catch (error: unknown) {
+		if (error instanceof Error) {
+			console.error(`Error al extraer las referencias: ${error.message}`);
+		} else {
+			console.error('Error desconocido al extraer las referencias');
+		}
+		throw error;
+	}
+};
+
+// Ejecutar el script directamente si es ejecutado desde la línea de comandos
+if (require.main === module) {
+	const inputFilePath = process.argv[2];
+	const debugModeArg = process.argv[3];
+
+	const debugMode = debugModeArg === 'true';
+
+	if (!inputFilePath) {
+		console.error('No se proporcionó un archivo de entrada.');
+		process.exit(1);
+	}
+
+	extractReferences(inputFilePath, debugMode)
+		.then(references => {
+			console.log('Referencias extraídas:', references);
+		})
+		.catch(error => {
+			console.error('Hubo un error al extraer las referencias:', error);
+		});
+}

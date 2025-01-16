@@ -28,8 +28,8 @@
 		"eslint:fix": "npx eslint --fix cypress",
 		"check:ts": "tsc --noEmit"
 	},
-	"keywords": ["upexgalaxy"],
-	"author": "Uper",
+	"keywords": ["verogeid"],
+	"author": "Diego González Fernández",
 	"license": "MIT",
 	"type": "module",
 	"devDependencies": {
