@@ -34,7 +34,7 @@ export const extractReferences = (
   console.log('Log content:', log.join('\n'));
 
   // Guardar el log en un archivo o variable según sea necesario
-  fs.writeFileSync('log.txt', log.join('\n'));
+  fs.writeFileSync('./log.txt', log.join('\n'));
 
   // Devolver las referencias y los archivos no encontrados
   return {
