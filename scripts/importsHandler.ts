@@ -7,44 +7,43 @@ export const addImportReferences = (
   allFiles: Set<string>,
   notFound: Set<string>,
   aliases: Record<string, string>,
-  log: string[] = []
+  log: string[]
 ) => {
-  const fileContent = fs.readFileSync(testFile, 'utf-8');
-  
-  const importRegex = /import\s+.*\s+from\s+['"]([^'"]+)['"]/g;
-  let match;
-  while ((match = importRegex.exec(fileContent)) !== null) {
-    let importPath = match[1];
+  log.push(`Starting addImportReferences for ${testFile}`);
 
-    // Resolver alias
-    if (importPath.startsWith('@')) {
-      const aliasName = importPath.split('/')[0];
-      const aliasPath = aliases[aliasName];
-      if (aliasPath) {
-        importPath = path.resolve(aliasPath, importPath.slice(aliasName.length));
-        log.push(`Alias resuelto: ${importPath}`);
-      } else {
-        log.push(`Alias no encontrado: ${aliasName}`);
+  try {
+    const fileContent = fs.readFileSync(testFile, 'utf-8');
+    const importRegex = /import\s+.*\s+from\s+['"]([^'"]+)['"];/g;
+    let match;
+
+    while ((match = importRegex.exec(fileContent)) !== null) {
+      let importPath = match[1];
+      log.push(`Found import: ${importPath}`);
+
+      // Resolver rutas de alias
+      if (importPath.startsWith('@')) {
+        const aliasName = importPath.split('/')[0];
+        const aliasBase = aliases[aliasName];
+
+        if (aliasBase) {
+          importPath = path.join(aliasBase, importPath.slice(aliasName.length));
+          log.push(`Resolved alias: ${importPath}`);
+        } else {
+          log.push(`Alias not found for ${aliasName}`);
+          notFound.add(importPath);
+        }
       }
-    }
 
-    // Asegurarse de que la ruta de importación sea relativa a la raíz del repositorio
-    if (!importPath.startsWith('cypress/')) {
-      importPath = path.join('cypress', importPath);
-    }
-    importPath = importPath.endsWith('.ts') || importPath.endsWith('.js') ? importPath : importPath + '.ts';
-
-    if (!allFiles.has(importPath)) {
-      const fileExists = fs.existsSync(importPath);
-      if (fileExists) {
+      // Resolver rutas relativas o absolutas
+      if (!allFiles.has(importPath)) {
         fileReferences.add(importPath);
         allFiles.add(importPath);
-        log.push(`Archivo encontrado: ${importPath}`);
-      } else {
-        notFound.add(importPath);
-        log.push(`Archivo no encontrado: ${importPath}`);
+        log.push(`Added reference: ${importPath}`);
       }
     }
+    log.push('Finished addImportReferences');
+  } catch (error) {
+    log.push(`Error in addImportReferences: ${error.message}`);
+    throw error;
   }
 };
-
