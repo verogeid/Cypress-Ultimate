@@ -41,3 +41,7 @@ jobs:
       - name: Show extracted references
         run: cat extracted_references.json
 
+      - name: Show log file content
+        run: cat log.txt
+
+
