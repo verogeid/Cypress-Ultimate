@@ -7,37 +7,28 @@ export const extractReferences = (
   testFile: string,
   aliasFilePath: string
 ) => {
+  console.log('Iniciando extractReferences');
+  
   const aliases = JSON.parse(fs.readFileSync(aliasFilePath, 'utf-8'));
   const fileReferences = new Set<string>();
   const allFiles = new Set<string>();
   const notFound = new Set<string>();
   const log: string[] = [];
 
-  log.push('Entering extractReferences function');
+  console.log('Agregando referencias de importación...');
+  addImportReferences(testFile, fileReferences, allFiles, notFound, aliases, log);
 
-  try {
-    // Agregar las referencias de importación
-    log.push('Calling addImportReferences');
-    addImportReferences(testFile, fileReferences, allFiles, notFound, aliases, log);
-    log.push('Finished addImportReferences');
+  console.log('Agregando referencias de fixtures...');
+  addFixtureReferences(testFile, fileReferences, allFiles, path.dirname(testFile), log);
 
-    // Agregar las referencias de fixtures
-    log.push('Calling addFixtureReferences');
-    addFixtureReferences(testFile, fileReferences, allFiles, path.dirname(testFile), log);
-    log.push('Finished addFixtureReferences');
-  } catch (error: any) {
-    log.push(`Error in extractReferences: ${error.message}`);
-    throw error;
-  }
-
-  // Mostrar el log antes de guardarlo
-  console.log('Log content before saving to file:');
+  // Mostrar log en consola antes de guardarlo
+  console.log('Log generado:');
   console.log(log.join('\n'));
 
   // Guardar el log en un archivo
-  fs.writeFileSync('./log.txt', log.join('\n'));
+  fs.writeFileSync('log.txt', log.join('\n'));
 
-  log.push('Exiting extractReferences function');
+  console.log('ExtractReferences completado');
 
   // Devolver las referencias y los archivos no encontrados
   return {
