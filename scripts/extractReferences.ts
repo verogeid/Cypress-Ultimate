@@ -7,31 +7,45 @@ export const extractReferences = (
   testFile: string,
   aliasFilePath: string
 ) => {
-  const aliases = JSON.parse(fs.readFileSync(aliasFilePath, 'utf-8'));
-  const fileReferences = new Set<string>();
-  const allFiles = new Set<string>();
-  const notFound = new Set<string>();
   const log: string[] = [];
+  log.push(`Starting extractReferences for ${testFile}`);
 
-  // Agregar las referencias de importación
-  addImportReferences(testFile, fileReferences, allFiles, notFound, aliases, log);
+  try {
+    // Leer alias desde el archivo
+    log.push(`Reading aliases from ${aliasFilePath}`);
+    const aliases = JSON.parse(fs.readFileSync(aliasFilePath, 'utf-8'));
 
-  // Agregar las referencias de fixtures
-  addFixtureReferences(testFile, fileReferences, allFiles, path.dirname(testFile), log);
+    const fileReferences = new Set<string>();
+    const allFiles = new Set<string>();
+    const notFound = new Set<string>();
 
-  // Guardar el log en un archivo o variable según sea necesario
-  fs.writeFileSync('log.txt', log.join('\n'));
+    // Agregar las referencias de importación
+    log.push('Calling addImportReferences');
+    addImportReferences(testFile, fileReferences, allFiles, notFound, aliases, log);
+    log.push('Finished calling addImportReferences');
 
-  // Devolver las referencias y los archivos no encontrados, incluyendo el log
-  const result = {
-    fileReferences: Array.from(fileReferences),
-    notFound: Array.from(notFound),
-    log: log
-  };
+    // Agregar las referencias de fixtures
+    log.push('Calling addFixtureReferences');
+    addFixtureReferences(testFile, fileReferences, allFiles, path.dirname(testFile), log);
+    log.push('Finished calling addFixtureReferences');
 
-  // Escribir el resultado completo, incluyendo el log, en el archivo JSON
-  fs.writeFileSync('extracted_references.json', JSON.stringify(result, null, 2));
+    // Mostrar el log generado antes de guardarlo
+    log.push('Logging extracted references');
+    console.log(log.join('\n'));
 
-  return result;
+    // Guardar el log en un archivo
+    fs.writeFileSync('log.txt', log.join('\n'));
+
+    return {
+      fileReferences: Array.from(fileReferences),
+      notFound: Array.from(notFound),
+      log: log
+    };
+  } catch (error) {
+    log.push(`Error in extractReferences: ${error.message}`);
+    fs.writeFileSync('log.txt', log.join('\n'));
+    throw error;
+  }
 };
+
 
