@@ -9,41 +9,47 @@ export const addImportReferences = (
   aliases: Record<string, string>,
   log: string[]
 ) => {
-  log.push(`Starting addImportReferences for ${testFile}`);
+  log.push('Entering addImportReferences function');
 
   try {
     const fileContent = fs.readFileSync(testFile, 'utf-8');
-    const importRegex = /import\s+.*\s+from\s+['"]([^'"]+)['"];/g;
+    const importRegex = /import\s+.*\s+from\s+["']([^"']+)["']/g;
     let match;
 
     while ((match = importRegex.exec(fileContent)) !== null) {
       let importPath = match[1];
-      log.push(`Found import: ${importPath}`);
 
-      // Resolver rutas de alias
+      log.push(`Found import path: ${importPath}`);
+
+      // Resolver alias si es necesario
       if (importPath.startsWith('@')) {
         const aliasName = importPath.split('/')[0];
-        const aliasBase = aliases[aliasName];
+        const aliasTarget = aliases[aliasName];
 
-        if (aliasBase) {
-          importPath = path.join(aliasBase, importPath.slice(aliasName.length));
+        if (aliasTarget) {
+          importPath = path.resolve(aliasTarget, importPath.slice(aliasName.length));
           log.push(`Resolved alias: ${importPath}`);
         } else {
-          log.push(`Alias not found for ${aliasName}`);
-          notFound.add(importPath);
+          log.push(`Alias not found for: ${importPath}`);
         }
       }
 
-      // Resolver rutas relativas o absolutas
-      if (!allFiles.has(importPath)) {
-        fileReferences.add(importPath);
-        allFiles.add(importPath);
-        log.push(`Added reference: ${importPath}`);
+      // Verificar si la ruta es válida
+      if (fs.existsSync(importPath)) {
+        if (!allFiles.has(importPath)) {
+          fileReferences.add(importPath);
+          allFiles.add(importPath);
+        }
+      } else {
+        notFound.add(importPath);
+        log.push(`Path not found: ${importPath}`);
       }
     }
-    log.push('Finished addImportReferences');
-  } catch (error) {
+  } catch (error: any) {
     log.push(`Error in addImportReferences: ${error.message}`);
     throw error;
   }
+
+  log.push('Exiting addImportReferences function');
 };
+
